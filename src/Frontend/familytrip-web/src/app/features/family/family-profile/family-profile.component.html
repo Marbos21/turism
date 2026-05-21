@@ -1,0 +1,275 @@
+<div class="family-page">
+  <div class="page-header">
+    <div class="container">
+      <div class="page-header__inner">
+        <div>
+          <h1 class="page-header__title">
+            <span class="material-icons">family_restroom</span>
+            Family Profile
+          </h1>
+          <p class="page-header__subtitle">Manage your family's travel preferences and members</p>
+        </div>
+        @if (family()) {
+          <button class="btn btn-primary" (click)="showFamilyForm.set(true)">
+            <span class="material-icons">edit</span>
+            Edit Profile
+          </button>
+        }
+      </div>
+    </div>
+  </div>
+
+  <div class="container family-content">
+    @if (successMessage()) {
+      <div class="alert alert-success mb-4">
+        <span class="material-icons">check_circle</span>
+        {{ successMessage() }}
+      </div>
+    }
+    @if (errorMessage()) {
+      <div class="alert alert-error mb-4">
+        <span class="material-icons">error_outline</span>
+        {{ errorMessage() }}
+      </div>
+    }
+
+    @if (isLoading()) {
+      <div class="loading-overlay">
+        <div class="spinner"></div>
+      </div>
+    } @else if (!family() && !showFamilyForm()) {
+      <!-- No family yet -->
+      <div class="no-family-card">
+        <div class="no-family-card__icon">
+          <span class="material-icons">family_restroom</span>
+        </div>
+        <h2>Create Your Family Profile</h2>
+        <p>Set up your family profile to get personalized travel recommendations and plan the perfect vacation for everyone.</p>
+        <button class="btn btn-primary btn-lg" (click)="showFamilyForm.set(true)">
+          <span class="material-icons">add</span>
+          Create Family Profile
+        </button>
+      </div>
+    } @else {
+      <div class="family-grid">
+        <!-- Family Details Card -->
+        @if (!showFamilyForm()) {
+          <div class="card family-details-card">
+            <div class="card-section-header">
+              <h2>Family Details</h2>
+              <button class="btn btn-ghost btn-sm" (click)="showFamilyForm.set(true)">
+                <span class="material-icons">edit</span> Edit
+              </button>
+            </div>
+            <div class="family-info">
+              <div class="family-info__name">
+                <div class="family-avatar">{{ family()?.familyName?.charAt(0) }}</div>
+                <div>
+                  <h3>{{ family()?.familyName }}</h3>
+                  <p class="text-muted text-sm">{{ family()?.members?.length || 0 }} members</p>
+                </div>
+              </div>
+
+              <div class="info-grid">
+                <div class="info-item">
+                  <span class="info-item__label">Budget Level</span>
+                  <span class="badge badge-info">{{ family()?.budgetLevel }}</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-item__label">Travel Style</span>
+                  <span class="badge badge-primary">{{ family()?.travelStyle }}</span>
+                </div>
+                <div class="info-item info-item--full">
+                  <span class="info-item__label">Preferred Climates</span>
+                  <div class="tag-list">
+                    @for (c of (family()?.preferredClimates ?? []); track c) {
+                      <span class="badge badge-secondary">{{ c }}</span>
+                    }
+                    @if (!family()?.preferredClimates?.length) {
+                      <span class="text-muted text-sm">None specified</span>
+                    }
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        }
+
+        <!-- Family Form -->
+        @if (showFamilyForm()) {
+          <div class="card">
+            <div class="card-section-header">
+              <h2>{{ family() ? 'Edit Family Profile' : 'Create Family Profile' }}</h2>
+              @if (family()) {
+                <button class="btn btn-ghost btn-sm" (click)="showFamilyForm.set(false)">Cancel</button>
+              }
+            </div>
+            <form [formGroup]="familyForm" (ngSubmit)="saveFamily()">
+              <div class="form-group">
+                <label>Family Name</label>
+                <input class="form-control" formControlName="familyName" placeholder="e.g. The Smith Family">
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Budget Level</label>
+                  <select class="form-control" formControlName="budgetLevel">
+                    @for (level of budgetLevels; track level) {
+                      <option [value]="level">{{ level }}</option>
+                    }
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Travel Style</label>
+                  <select class="form-control" formControlName="travelStyle">
+                    @for (style of travelStyles; track style) {
+                      <option [value]="style">{{ style }}</option>
+                    }
+                  </select>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Preferred Climates</label>
+                <div class="chips-group">
+                  @for (climate of climateOptions; track climate) {
+                    <button
+                      type="button"
+                      class="chip"
+                      [class.chip--selected]="isClimateSelected(climate)"
+                      (click)="toggleClimate(climate)"
+                    >{{ climate }}</button>
+                  }
+                </div>
+              </div>
+              <div class="form-actions">
+                <button type="submit" class="btn btn-primary" [disabled]="isSaving()">
+                  @if (isSaving()) { <span class="spinner spinner--sm"></span> }
+                  {{ family() ? 'Save Changes' : 'Create Profile' }}
+                </button>
+              </div>
+            </form>
+          </div>
+        }
+
+        <!-- Members Section -->
+        <div class="card members-card">
+          <div class="card-section-header">
+            <h2>
+              <span class="material-icons">group</span>
+              Family Members
+              <span class="badge badge-secondary">{{ family()?.members?.length || 0 }}</span>
+            </h2>
+            <button class="btn btn-primary btn-sm" (click)="openAddMember()">
+              <span class="material-icons">person_add</span>
+              Add Member
+            </button>
+          </div>
+
+          @if (showMemberForm()) {
+            <div class="member-form">
+              <h3 class="member-form__title">{{ editingMember() ? 'Edit Member' : 'Add New Member' }}</h3>
+              <form [formGroup]="memberForm" (ngSubmit)="saveMember()">
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>Full Name</label>
+                    <input class="form-control" formControlName="fullName" placeholder="Member's full name">
+                  </div>
+                  <div class="form-group">
+                    <label>Birth Date</label>
+                    <input class="form-control" type="date" formControlName="birthDate">
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label>Age Group</label>
+                  <select class="form-control" formControlName="ageGroup">
+                    @for (group of ageGroups; track group) {
+                      <option [value]="group">{{ group }}</option>
+                    }
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Interests</label>
+                  <div class="chips-group">
+                    @for (interest of interestOptions; track interest) {
+                      <button
+                        type="button"
+                        class="chip chip--sm"
+                        [class.chip--selected]="isInterestSelected(interest)"
+                        (click)="toggleInterest(interest)"
+                      >{{ interest }}</button>
+                    }
+                  </div>
+                </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>Dietary Restrictions</label>
+                    <input class="form-control" formControlName="dietaryRestrictions" placeholder="e.g. Vegetarian, Nut allergy">
+                  </div>
+                  <div class="form-group">
+                    <label>Mobility Needs</label>
+                    <input class="form-control" formControlName="mobilityNeeds" placeholder="e.g. Wheelchair accessible">
+                  </div>
+                </div>
+                <div class="form-actions">
+                  <button type="button" class="btn btn-ghost" (click)="showMemberForm.set(false)">Cancel</button>
+                  <button type="submit" class="btn btn-primary" [disabled]="isSaving()">
+                    @if (isSaving()) { <span class="spinner spinner--sm"></span> }
+                    {{ editingMember() ? 'Save Changes' : 'Add Member' }}
+                  </button>
+                </div>
+              </form>
+            </div>
+          }
+
+          <div class="members-list">
+            @if (!family()?.members?.length) {
+              <div class="empty-state">
+                <span class="material-icons">group_add</span>
+                <p>No family members yet. Add your first member!</p>
+              </div>
+            }
+            @for (member of family()?.members; track member.id) {
+              <div class="member-card">
+                <div class="member-card__avatar">
+                  <span class="material-icons">{{ getAgeGroupIcon(member.ageGroup) }}</span>
+                </div>
+                <div class="member-card__info">
+                  <div class="member-card__header">
+                    <h4>{{ member.fullName }}</h4>
+                    <span class="badge badge-secondary">{{ member.ageGroup }}</span>
+                  </div>
+                  <p class="member-card__age text-muted text-sm">
+                    Age {{ getMemberAge(member.birthDate) }} · Born {{ member.birthDate | dateFormat:'short' }}
+                  </p>
+                  @if (member.interests?.length) {
+                    <div class="member-card__interests">
+                      @for (interest of member.interests.slice(0, 4); track interest) {
+                        <span class="badge badge-primary">{{ interest }}</span>
+                      }
+                      @if (member.interests.length > 4) {
+                        <span class="badge badge-secondary">+{{ member.interests.length - 4 }}</span>
+                      }
+                    </div>
+                  }
+                  @if (member.dietaryRestrictions) {
+                    <p class="member-card__dietary text-sm">
+                      <span class="material-icons">restaurant</span>
+                      {{ member.dietaryRestrictions }}
+                    </p>
+                  }
+                </div>
+                <div class="member-card__actions">
+                  <button class="btn btn-ghost btn-sm" (click)="openEditMember(member)" title="Edit">
+                    <span class="material-icons">edit</span>
+                  </button>
+                  <button class="btn btn-ghost btn-sm text-danger" (click)="deleteMember(member)" title="Remove">
+                    <span class="material-icons">delete_outline</span>
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+    }
+  </div>
+</div>

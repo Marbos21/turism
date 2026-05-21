@@ -1,0 +1,12 @@
+node_modules
+.angular
+dist
+.vite
+.cache
+coverage
+npm-debug.log*
+.DS_Store
+.git
+.gitignore
+.vscode
+.idea

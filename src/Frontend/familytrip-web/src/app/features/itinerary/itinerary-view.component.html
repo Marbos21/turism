@@ -1,0 +1,179 @@
+@if (isLoading()) {
+  <div class="loading-overlay" style="min-height:80vh;"><div class="spinner"></div></div>
+} @else {
+  @if (trip(); as trip) {
+  <div class="itinerary-page">
+    <!-- Header -->
+    <div class="itinerary-hero">
+      <div class="container">
+        <div class="itinerary-hero__inner">
+          <div>
+            <a routerLink="/trip-planner" class="back-link">
+              <span class="material-icons">arrow_back</span> Back to Trip Planner
+            </a>
+            <h1>{{ trip.title }}</h1>
+            <p>
+              <span class="material-icons">location_on</span>
+              {{ trip.destinationName }}, {{ trip.destinationCountry }}
+              &nbsp;&bull;&nbsp;
+              <span class="material-icons">calendar_today</span>
+              {{ trip.startDate | dateFormat:'short' }} — {{ trip.endDate | dateFormat:'short' }}
+              &nbsp;&bull;&nbsp;
+              <span class="material-icons">family_restroom</span>
+              {{ trip.familyName }}
+            </p>
+          </div>
+          <div class="itinerary-hero__actions">
+            <button
+              class="btn btn-primary"
+              (click)="generateItinerary()"
+              [disabled]="isGenerating()"
+            >
+              @if (isGenerating()) {
+                <span class="spinner spinner--sm"></span>
+                Generating...
+              } @else {
+                <span class="material-icons">auto_awesome</span>
+                Regenerate Itinerary
+              }
+            </button>
+            <a [routerLink]="['/budget', trip.id]" class="btn btn-outline">
+              <span class="material-icons">pie_chart</span>
+              View Budget
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="container itinerary-content">
+      <!-- Stats bar -->
+      <div class="itinerary-stats">
+        <div class="stat-pill">
+          <span class="material-icons">schedule</span>
+          <span>{{ trip.durationDays }} days</span>
+        </div>
+        <div class="stat-pill">
+          <span class="material-icons">event_note</span>
+          <span>{{ itinerary().length }} days planned</span>
+        </div>
+        <div class="stat-pill">
+          <span class="material-icons">account_balance_wallet</span>
+          <span>Est. ${{ totalTripCost | number:'1.0-0' }} total</span>
+        </div>
+        <div class="stat-pill">
+          <span class="material-icons">attractions</span>
+          <span>{{ totalActivities }} activities</span>
+        </div>
+      </div>
+
+      <div class="itinerary-layout">
+        <!-- Day Navigator -->
+        <aside class="day-nav">
+          <h3 class="day-nav__title">Day by Day</h3>
+          @for (day of itinerary(); track day.dayNumber) {
+            <button
+              class="day-nav__item"
+              [class.day-nav__item--active]="activeDay() === day.dayNumber"
+              (click)="activeDay.set(day.dayNumber)"
+            >
+              <div class="day-nav__number">Day {{ day.dayNumber }}</div>
+              <div class="day-nav__date">{{ day.date | dateFormat:'short' }}</div>
+              <div class="day-nav__summary">{{ day.title }}</div>
+              <div class="day-nav__cost">${{ day.totalCostUsd | number:'1.0-0' }}</div>
+            </button>
+          }
+        </aside>
+
+        <!-- Day Detail -->
+        <main class="day-detail">
+          @if (activeDay$; as day) {
+            <div class="day-header">
+              <div>
+                <h2>Day {{ day.dayNumber }}: {{ day.title }}</h2>
+                <p class="text-muted">{{ day.date | dateFormat:'long' }}</p>
+              </div>
+              <div class="day-cost">
+                <span class="material-icons">account_balance_wallet</span>
+                Day total: <strong>${{ day.totalCostUsd | number:'1.0-0' }}</strong>
+              </div>
+            </div>
+
+            <!-- Timeline -->
+            <div class="timeline">
+              @for (activity of day.activities; track activity.id) {
+                <div class="timeline-item">
+                  <div class="timeline-item__time">
+                    <span class="start-time">{{ activity.startTime }}</span>
+                    <span class="end-time">{{ activity.endTime }}</span>
+                  </div>
+
+                  <div class="timeline-item__connector">
+                    <div
+                      class="timeline-item__dot"
+                      [style.background]="getActivityTypeColor(activity.type)"
+                    >
+                      <span class="material-icons">{{ getActivityTypeIcon(activity.type) }}</span>
+                    </div>
+                    <div class="timeline-item__line"></div>
+                  </div>
+
+                  <div class="timeline-item__card">
+                    <div class="activity-card">
+                      <div class="activity-card__header">
+                        <div>
+                          <h4 class="activity-card__name">{{ activity.name }}</h4>
+                          <p class="activity-card__type" [style.color]="getActivityTypeColor(activity.type)">
+                            {{ activity.type }}
+                          </p>
+                        </div>
+                        <div class="activity-card__cost">
+                          @if (activity.costPerPersonUsd > 0) {
+                            <span class="cost-badge">${{ activity.costPerPersonUsd }}<small>/person</small></span>
+                          } @else {
+                            <span class="badge badge-success">Free</span>
+                          }
+                        </div>
+                      </div>
+
+                      <p class="activity-card__description">{{ activity.description }}</p>
+
+                      <div class="activity-card__meta">
+                        @if (activity.location) {
+                          <span class="meta-item">
+                            <span class="material-icons">place</span>
+                            {{ activity.location }}
+                          </span>
+                        }
+                        @if (activity.isKidFriendly) {
+                          <span class="meta-item meta-item--kids">
+                            <span class="material-icons">child_friendly</span>
+                            Kid-friendly
+                          </span>
+                        }
+                        @if (activity.isMandatory) {
+                          <span class="meta-item meta-item--mandatory">
+                            <span class="material-icons">star</span>
+                            Must-do
+                          </span>
+                        }
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+
+            @if (day.notes) {
+              <div class="day-notes">
+                <span class="material-icons">info_outline</span>
+                <p>{{ day.notes }}</p>
+              </div>
+            }
+          }
+        </main>
+      </div>
+    </div>
+  </div>
+  }
+}

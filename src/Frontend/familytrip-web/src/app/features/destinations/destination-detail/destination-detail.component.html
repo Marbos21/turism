@@ -1,0 +1,361 @@
+@if (isLoading()) {
+  <div class="loading-overlay" style="min-height: 80vh;">
+    <div class="spinner"></div>
+  </div>
+} @else {
+  @if (destination(); as dest) {
+  <div class="destination-detail">
+    <!-- Hero Banner -->
+    <div class="detail-hero" [style.background-image]="'url(' + dest.imageUrl + ')'">
+      <div class="detail-hero__overlay">
+        <div class="container">
+          <a routerLink="/destinations" class="detail-hero__back">
+            <span class="material-icons">arrow_back</span> All Destinations
+          </a>
+          <div class="detail-hero__content">
+            <h1>{{ dest.name }}</h1>
+            <p class="detail-hero__country">
+              <span class="material-icons">location_on</span>
+              @if (dest.region) { {{ dest.region }}, } {{ dest.country }}
+            </p>
+            <div class="detail-hero__meta">
+              <span class="badge badge-success">{{ dest.climate }}</span>
+              <span class="detail-hero__cost">From ${{ dest.averageCostPerDayUsd }}/day per person</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="container detail-content">
+      <div class="detail-layout">
+        <!-- Main content -->
+        <main class="detail-main">
+          <!-- Score Summary -->
+          <div class="score-summary card">
+            <div class="score-item">
+              <div class="score-item__circle" [style.border-color]="getScoreColor(dest.childFriendlyScore)">
+                <span [style.color]="getScoreColor(dest.childFriendlyScore)">{{ dest.childFriendlyScore }}</span>
+                <small>/10</small>
+              </div>
+              <div>
+                <strong>Child-Friendly</strong>
+                <p class="text-muted text-sm">Suitability for families</p>
+              </div>
+            </div>
+
+            @if (dest.languages?.length) {
+              <div class="score-item">
+                <span class="material-icons score-item__lang-icon">translate</span>
+                <div>
+                  <strong>Languages</strong>
+                  <p class="text-muted text-sm">{{ dest.languages.join(', ') }}</p>
+                </div>
+              </div>
+            }
+
+            @if (dest.currency) {
+              <div class="score-item">
+                <span class="material-icons score-item__currency-icon">payments</span>
+                <div>
+                  <strong>Currency</strong>
+                  <p class="text-muted text-sm">{{ dest.currency }}</p>
+                </div>
+              </div>
+            }
+
+            <div class="score-item">
+              <span class="material-icons">wb_sunny</span>
+              <div>
+                <strong>Climate</strong>
+                <p class="text-muted text-sm">{{ dest.climate }}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tabs -->
+          <div class="detail-tabs">
+            <button
+              class="detail-tab"
+              [class.detail-tab--active]="activeTab() === 'overview'"
+              (click)="activeTab.set('overview')"
+            >Overview</button>
+            <button
+              class="detail-tab"
+              [class.detail-tab--active]="activeTab() === 'weather'"
+              (click)="activeTab.set('weather')"
+            >Weather & Best Time</button>
+            <button
+              class="detail-tab"
+              [class.detail-tab--active]="activeTab() === 'tips'"
+              (click)="activeTab.set('tips')"
+            >Family Tips</button>
+          </div>
+
+          <!-- Overview Tab -->
+          @if (activeTab() === 'overview') {
+            <div class="card">
+              <h2>About {{ dest.name }}</h2>
+              <p class="description-text">{{ dest.description }}</p>
+
+              <h3 class="section-subtitle">Highlights</h3>
+              <div class="highlights-grid">
+                @for (highlight of dest.highlights; track highlight) {
+                  <div class="highlight-item">
+                    <span class="material-icons">star_border</span>
+                    <span>{{ highlight }}</span>
+                  </div>
+                }
+              </div>
+
+              <h3 class="section-subtitle">Tags</h3>
+              <div class="tags-list">
+                @for (tag of dest.tags; track tag) {
+                  <span class="badge badge-primary">{{ tag }}</span>
+                }
+              </div>
+            </div>
+
+            <!-- Live external data: Weather + Attractions + Hotels -->
+            @if (details(); as d) {
+              @if (d.weather || d.attractions?.length || (d.hotels && d.hotels.hotelsFound > 0)) {
+                <div class="card live-data-card">
+                  <div class="live-data-card__header">
+                    <h2><span class="material-icons">satellite_alt</span> Live Data</h2>
+                    <p class="text-muted text-sm">
+                      From third-party APIs: OpenWeatherMap · Google Places · Duffel
+                    </p>
+                  </div>
+
+                  <div class="live-data-card__grid">
+                    <!-- Weather widget -->
+                    @if (d.weather; as w) {
+                      <div class="live-data-block">
+                        <div class="live-data-block__header">
+                          <span class="material-icons live-data-block__icon" style="color:#f57c00;">wb_sunny</span>
+                          <h3>5-Day Forecast</h3>
+                        </div>
+                        <div class="weather-strip">
+                          <div class="weather-strip__main">
+                            <span class="weather-strip__temp">{{ w.averageTempCelsius }}°C</span>
+                            <span class="weather-strip__summary">{{ w.summary }}</span>
+                          </div>
+                          <div class="weather-strip__details">
+                            <span><strong>Min:</strong> {{ w.minTempCelsius }}°C</span>
+                            <span><strong>Max:</strong> {{ w.maxTempCelsius }}°C</span>
+                            <span><strong>Rainy days:</strong> {{ w.rainyDays }}</span>
+                          </div>
+                        </div>
+                      </div>
+                    }
+
+                    <!-- Hotels widget -->
+                    @if (d.hotels && d.hotels.hotelsFound > 0) {
+                      <div class="live-data-block">
+                        <div class="live-data-block__header">
+                          <span class="material-icons live-data-block__icon" style="color:#6a1b9a;">hotel</span>
+                          <h3>{{ d.hotels.hotelsFound }} hotels nearby</h3>
+                        </div>
+                        @if (d.hotels.sampleHotels?.length) {
+                          <ul class="sample-list">
+                            @for (h of d.hotels.sampleHotels; track h.name) {
+                              <li>
+                                <strong>{{ h.name }}</strong>
+                                @if (h.rating != null) {
+                                  <span class="rating-pill"><span class="material-icons">grade</span> {{ h.rating }}/10</span>
+                                }
+                              </li>
+                            }
+                          </ul>
+                        }
+                      </div>
+                    }
+                  </div>
+
+                  <!-- Nearby attractions -->
+                  @if (d.attractions?.length) {
+                    <div class="live-data-attractions">
+                      <div class="live-data-block__header">
+                        <span class="material-icons live-data-block__icon" style="color:#1b5e20;">place</span>
+                        <h3>Nearby family attractions</h3>
+                      </div>
+                      <div class="attractions-grid">
+                        @for (a of d.attractions; track a.name) {
+                          <div class="attraction-card">
+                            <strong>{{ a.name }}</strong>
+                            <div class="attraction-card__meta">
+                              @if (a.rating != null) {
+                                <span><span class="material-icons">grade</span> {{ a.rating }} ({{ a.userRatingsTotal || 0 }})</span>
+                              }
+                              @if (a.category) {
+                                <span class="badge badge-secondary">{{ a.category }}</span>
+                              }
+                            </div>
+                          </div>
+                        }
+                      </div>
+                    </div>
+                  }
+                </div>
+              }
+            }
+
+            <!-- Map -->
+            <div class="card">
+              <h2>Location</h2>
+              <app-map
+                [latitude]="dest.latitude"
+                [longitude]="dest.longitude"
+                [locationName]="dest.name"
+                height="350px"
+              ></app-map>
+            </div>
+          }
+
+          <!-- Weather Tab -->
+          @if (activeTab() === 'weather') {
+            <div class="card">
+              <h2>Climate & Weather</h2>
+              @if (details()?.weather; as w) {
+                <p class="text-muted text-sm" style="margin-top:-8px;margin-bottom:16px;">
+                  <span class="material-icons" style="font-size:14px;vertical-align:-2px;">satellite_alt</span>
+                  Live 5-day forecast from OpenWeatherMap
+                </p>
+                <div class="weather-stats">
+                  <div class="weather-stat">
+                    <span class="material-icons">thermostat</span>
+                    <span class="weather-stat__value">{{ w.averageTempCelsius }}°C</span>
+                    <span class="weather-stat__label">Avg. Temperature</span>
+                  </div>
+                  <div class="weather-stat">
+                    <span class="material-icons">water_drop</span>
+                    <span class="weather-stat__value">{{ w.rainyDays }}</span>
+                    <span class="weather-stat__label">Rainy Days (5-day)</span>
+                  </div>
+                  <div class="weather-stat">
+                    <span class="material-icons">arrow_downward</span>
+                    <span class="weather-stat__value">{{ w.minTempCelsius }}°C</span>
+                    <span class="weather-stat__label">Min Temperature</span>
+                  </div>
+                  <div class="weather-stat">
+                    <span class="material-icons">arrow_upward</span>
+                    <span class="weather-stat__value">{{ w.maxTempCelsius }}°C</span>
+                    <span class="weather-stat__label">Max Temperature</span>
+                  </div>
+                </div>
+              } @else {
+                <p class="text-muted">Live weather forecast not available right now.</p>
+              }
+
+              <h3 class="section-subtitle">Best Months to Visit</h3>
+              @if (dest.bestMonths?.length) {
+                <p class="text-muted text-sm" style="margin-top:-4px;margin-bottom:12px;">
+                  Recommended based on the {{ dest.climate }} climate.
+                </p>
+                <div class="months-grid">
+                  @for (month of monthNames; track month; let i = $index) {
+                    <div class="month-item" [class.month-item--best]="isBestMonth(i)">
+                      <span>{{ month }}</span>
+                      @if (isBestMonth(i)) {
+                        <span class="material-icons month-item__icon">star</span>
+                      }
+                    </div>
+                  }
+                </div>
+              } @else {
+                <p class="text-muted">Best months not yet computed for this destination.</p>
+              }
+            </div>
+          }
+
+          <!-- Tips Tab -->
+          @if (activeTab() === 'tips') {
+            <div class="card">
+              <h2>Family Travel Tips</h2>
+              @if (details(); as d) {
+                <p class="text-muted">
+                  Personalised tips for {{ dest.name }} aren't generated yet. Use
+                  <a routerLink="/recommendations">AI Recommendations</a> to get tailored reasoning
+                  for your family, or
+                  <a routerLink="/trip-planner" [queryParams]="{destinationId: dest.id}">plan a trip</a>
+                  to see day-by-day suggestions.
+                </p>
+                @if (d.attractions?.length) {
+                  <h3 class="section-subtitle">What you'll find nearby</h3>
+                  <ul class="tips-list" style="list-style:none;padding:0;">
+                    @for (a of d.attractions.slice(0, 5); track a.name) {
+                      <li class="tip-item">
+                        <span class="tip-item__icon material-icons">place</span>
+                        <div>
+                          <strong>{{ a.name }}</strong>
+                          @if (a.rating != null) {
+                            <p class="text-muted text-sm">Rated {{ a.rating }}/5
+                              @if (a.userRatingsTotal) { ({{ a.userRatingsTotal }} reviews) }
+                            </p>
+                          }
+                        </div>
+                      </li>
+                    }
+                  </ul>
+                }
+              } @else {
+                <p class="text-muted">Loading destination data...</p>
+              }
+            </div>
+          }
+        </main>
+
+        <!-- Sidebar -->
+        <aside class="detail-sidebar">
+          <div class="card">
+            <h3>Plan a Trip Here</h3>
+            <p class="text-muted text-sm">Ready to explore {{ dest.name }} with your family?</p>
+            <a routerLink="/trip-planner" [queryParams]="{destinationId: dest.id}" class="btn btn-primary btn-lg" style="width:100%;justify-content:center;margin-top:16px;">
+              <span class="material-icons">map</span>
+              Plan This Trip
+            </a>
+            <a routerLink="/recommendations" class="btn btn-outline btn-lg" style="width:100%;justify-content:center;margin-top:10px;">
+              <span class="material-icons">smart_toy</span>
+              Get Recommendations
+            </a>
+          </div>
+
+          <div class="card">
+            <h3>Quick Info</h3>
+            <div class="quick-info-list">
+              <div class="quick-info-item">
+                <span class="material-icons">public</span>
+                <span><strong>Country:</strong> {{ dest.country }}</span>
+              </div>
+              <div class="quick-info-item">
+                <span class="material-icons">account_balance_wallet</span>
+                <span><strong>Avg Cost:</strong> ${{ dest.averageCostPerDayUsd }}/day</span>
+              </div>
+              <div class="quick-info-item">
+                <span class="material-icons">wb_sunny</span>
+                <span><strong>Climate:</strong> {{ dest.climate }}</span>
+              </div>
+              <div class="quick-info-item">
+                <span class="material-icons">child_friendly</span>
+                <span><strong>Kid Score:</strong> {{ dest.childFriendlyScore }}/10</span>
+              </div>
+              @if (dest.languages?.length) {
+                <div class="quick-info-item">
+                  <span class="material-icons">translate</span>
+                  <span><strong>Language:</strong> {{ dest.languages.join(', ') }}</span>
+                </div>
+              }
+              @if (dest.currency) {
+                <div class="quick-info-item">
+                  <span class="material-icons">payments</span>
+                  <span><strong>Currency:</strong> {{ dest.currency }}</span>
+                </div>
+              }
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </div>
+  }
+}

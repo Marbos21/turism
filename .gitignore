@@ -1,0 +1,39 @@
+# macOS
+.DS_Store
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment files
+.env
+.env.*
+
+# Node / Angular
+node_modules/
+dist/
+.angular/
+.vite/
+.cache/
+coverage/
+
+# .NET build artifacts
+bin/
+obj/
+
+# Visual Studio / JetBrains
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+
+# Test results
+TestResults/
+
+# Databases and local data
+*.db
+*.sqlite
+*.sqlite3

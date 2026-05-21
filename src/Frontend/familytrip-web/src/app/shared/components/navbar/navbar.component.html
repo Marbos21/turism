@@ -1,0 +1,48 @@
+<nav class="navbar">
+  <div class="navbar__inner">
+    <!-- Logo -->
+    <a routerLink="/dashboard" class="navbar__logo">
+      <span class="navbar__logo-icon">✈</span>
+      <span class="navbar__logo-text">FamilyTrip</span>
+    </a>
+
+    <!-- Desktop Navigation -->
+    <ul class="navbar__links" [class.navbar__links--open]="mobileMenuOpen">
+      @for (link of navLinks; track link.path) {
+        <li>
+          <a
+            [routerLink]="link.path"
+            routerLinkActive="navbar__link--active"
+            class="navbar__link"
+            (click)="mobileMenuOpen = false"
+          >
+            <span class="material-icons navbar__link-icon">{{ link.icon }}</span>
+            {{ link.label }}
+          </a>
+        </li>
+      }
+    </ul>
+
+    <!-- Right section -->
+    <div class="navbar__right">
+      @if (authService.isLoggedIn()) {
+        <div class="navbar__user">
+          <div class="navbar__avatar" [title]="authService.currentUser()?.fullName ?? ''">
+            {{ userInitials }}
+          </div>
+          <span class="navbar__username">{{ authService.currentUser()?.fullName }}</span>
+          <button class="btn btn-ghost btn-sm navbar__logout" (click)="logout()" title="Sign out">
+            <span class="material-icons">logout</span>
+          </button>
+        </div>
+      }
+
+      <!-- Mobile burger -->
+      <button class="navbar__burger" (click)="toggleMobileMenu()" aria-label="Toggle menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+  </div>
+</nav>

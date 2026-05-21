@@ -1,0 +1,162 @@
+<div class="auth-layout">
+  <div class="auth-hero">
+    <div class="auth-hero__content">
+      <div class="auth-hero__logo">
+        <span>✈</span>
+        <span>FamilyTrip Assistant</span>
+      </div>
+      <h1>Start your family's journey today</h1>
+      <p>Join thousands of families already planning unforgettable vacations with our AI-powered assistant.</p>
+      <div class="auth-hero__steps">
+        <div class="step">
+          <span class="step__number">1</span>
+          <div>
+            <strong>Create your family profile</strong>
+            <p>Add your family members, interests and travel preferences</p>
+          </div>
+        </div>
+        <div class="step">
+          <span class="step__number">2</span>
+          <div>
+            <strong>Get personalized recommendations</strong>
+            <p>Our AI suggests the best destinations for your family</p>
+          </div>
+        </div>
+        <div class="step">
+          <span class="step__number">3</span>
+          <div>
+            <strong>Plan and book with confidence</strong>
+            <p>Generate itineraries and track your travel budget</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="auth-form-panel">
+    <div class="auth-form-card">
+      <div class="auth-form-card__header">
+        <h2>Create your account</h2>
+        <p>Free forever. No credit card required.</p>
+      </div>
+
+      @if (errorMessage) {
+        <div class="alert alert-error">
+          <span class="material-icons">error_outline</span>
+          {{ errorMessage }}
+        </div>
+      }
+
+      <form [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
+        <div class="form-group">
+          <label for="fullName">Full name</label>
+          <input
+            id="fullName"
+            type="text"
+            class="form-control"
+            [class.is-invalid]="fullName.invalid && fullName.touched"
+            formControlName="fullName"
+            placeholder="Jane Smith"
+            autocomplete="name"
+          >
+          @if (fullName.touched && fullName.hasError('required')) {
+            <span class="form-error">Full name is required.</span>
+          } @else if (fullName.touched && fullName.hasError('minlength')) {
+            <span class="form-error">Name must be at least 2 characters.</span>
+          }
+        </div>
+
+        <div class="form-group">
+          <label for="email">Email address</label>
+          <input
+            id="email"
+            type="email"
+            class="form-control"
+            [class.is-invalid]="email.invalid && email.touched"
+            formControlName="email"
+            placeholder="you@example.com"
+            autocomplete="email"
+          >
+          @if (email.touched && email.hasError('required')) {
+            <span class="form-error">Email is required.</span>
+          } @else if (email.touched && email.hasError('email')) {
+            <span class="form-error">Please enter a valid email address.</span>
+          }
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password</label>
+          <div class="input-wrapper">
+            <input
+              id="password"
+              [type]="showPassword ? 'text' : 'password'"
+              class="form-control"
+              [class.is-invalid]="password.invalid && password.touched"
+              formControlName="password"
+              placeholder="Min 8 characters"
+              autocomplete="new-password"
+            >
+            <button type="button" class="input-suffix-btn" (click)="showPassword = !showPassword">
+              <span class="material-icons">{{ showPassword ? 'visibility_off' : 'visibility' }}</span>
+            </button>
+          </div>
+          @if (password.value) {
+            <div class="password-strength">
+              <div class="password-strength__bars">
+                @for (i of [1,2,3,4]; track i) {
+                  <div
+                    class="password-strength__bar"
+                    [style.background]="i <= getPasswordStrength().level ? getPasswordStrength().color : '#e0e0e0'"
+                  ></div>
+                }
+              </div>
+              <span [style.color]="getPasswordStrength().color">{{ getPasswordStrength().label }}</span>
+            </div>
+          }
+          @if (password.touched && password.hasError('required')) {
+            <span class="form-error">Password is required.</span>
+          } @else if (password.touched && password.hasError('minlength')) {
+            <span class="form-error">Password must be at least 8 characters.</span>
+          } @else if (password.touched && password.hasError('pattern')) {
+            <span class="form-error">Must contain at least one uppercase letter and one number.</span>
+          }
+        </div>
+
+        <div class="form-group">
+          <label for="confirmPassword">Confirm password</label>
+          <div class="input-wrapper">
+            <input
+              id="confirmPassword"
+              [type]="showConfirm ? 'text' : 'password'"
+              class="form-control"
+              [class.is-invalid]="(confirmPassword.invalid || form.hasError('passwordMismatch')) && confirmPassword.touched"
+              formControlName="confirmPassword"
+              placeholder="Repeat your password"
+              autocomplete="new-password"
+            >
+            <button type="button" class="input-suffix-btn" (click)="showConfirm = !showConfirm">
+              <span class="material-icons">{{ showConfirm ? 'visibility_off' : 'visibility' }}</span>
+            </button>
+          </div>
+          @if (confirmPassword.touched && form.hasError('passwordMismatch')) {
+            <span class="form-error">Passwords do not match.</span>
+          }
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-lg auth-submit-btn" [disabled]="isLoading">
+          @if (isLoading) {
+            <span class="spinner spinner--sm"></span>
+            Creating account...
+          } @else {
+            <span class="material-icons">person_add</span>
+            Create account
+          }
+        </button>
+      </form>
+
+      <div class="auth-form-card__footer">
+        <p>Already have an account? <a routerLink="/auth/login">Sign in</a></p>
+      </div>
+    </div>
+  </div>
+</div>

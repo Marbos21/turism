@@ -1,0 +1,169 @@
+@if (isLoading()) {
+  <div class="loading-overlay" style="min-height:80vh;"><div class="spinner"></div></div>
+} @else {
+  @if (trip(); as trip) {
+  <div class="budget-page">
+    <div class="budget-hero">
+      <div class="container">
+        <a routerLink="/trip-planner" class="back-link">
+          <span class="material-icons">arrow_back</span> Back to Trip Planner
+        </a>
+        <h1><span class="material-icons">account_balance_wallet</span> Budget Estimator</h1>
+        <p>{{ trip.title }} &bull; {{ trip.destinationName }}, {{ trip.destinationCountry }}</p>
+      </div>
+    </div>
+
+    <div class="container budget-content">
+      @if (budget(); as budget) {
+        <!-- Summary Cards -->
+        <div class="budget-summary">
+          <div class="summary-card summary-card--total">
+            <span class="material-icons">account_balance_wallet</span>
+            <div>
+              <span class="summary-card__label">Total Budget</span>
+              <span class="summary-card__value">${{ budget.totalUsd | number:'1.0-0' }}</span>
+            </div>
+          </div>
+          <div class="summary-card">
+            <span class="material-icons">people</span>
+            <div>
+              <span class="summary-card__label">Travelers</span>
+              <span class="summary-card__value">{{ budget.numberOfPeople }}</span>
+            </div>
+          </div>
+          <div class="summary-card">
+            <span class="material-icons">person</span>
+            <div>
+              <span class="summary-card__label">Per Person</span>
+              <span class="summary-card__value">${{ (budget.totalUsd / budget.numberOfPeople) | number:'1.0-0' }}</span>
+            </div>
+          </div>
+          <div class="summary-card">
+            <span class="material-icons">today</span>
+            <div>
+              <span class="summary-card__label">Per Day</span>
+              <span class="summary-card__value">${{ (budget.totalUsd / trip.durationDays) | number:'1.0-0' }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="budget-main">
+          <!-- Pie Chart -->
+          <div class="card chart-card">
+            <h2>Budget Distribution</h2>
+            <div class="pie-wrapper">
+              <svg viewBox="0 0 200 200" class="pie-chart">
+                @for (seg of pieSegments; track seg.label) {
+                  <path [attr.d]="seg.d" [attr.fill]="seg.color" />
+                }
+              </svg>
+              <div class="pie-center">
+                <span class="pie-center__value">${{ budget.totalUsd | number:'1.0-0' }}</span>
+                <span class="pie-center__label">Total</span>
+              </div>
+            </div>
+
+            <div class="legend">
+              @for (cat of categories(); track cat.label) {
+                <div class="legend-item">
+                  <span class="legend-item__dot" [style.background]="cat.color"></span>
+                  <span class="legend-item__label">{{ cat.label }}</span>
+                  <span class="legend-item__percent">{{ cat.percentage }}%</span>
+                  <span class="legend-item__amount">${{ cat.amount | number:'1.0-0' }}</span>
+                </div>
+              }
+            </div>
+          </div>
+
+          <!-- Category Breakdown -->
+          <div class="breakdown-panel">
+            <div class="card">
+              <h2>Detailed Breakdown</h2>
+              <div class="categories-list">
+                @for (cat of categories(); track cat.label) {
+                  <div class="category-row">
+                    <div class="category-row__icon" [style.background]="cat.color + '20'" [style.color]="cat.color">
+                      <span class="material-icons">{{ cat.icon }}</span>
+                    </div>
+                    <div class="category-row__info">
+                      <div class="category-row__top">
+                        <span class="category-row__label">{{ cat.label }}</span>
+                        <span class="category-row__amount">${{ cat.amount | number:'1.0-0' }}</span>
+                      </div>
+                      <div class="category-row__bar-wrapper">
+                        <div
+                          class="category-row__bar"
+                          [style.width]="cat.percentage + '%'"
+                          [style.background]="cat.color"
+                        ></div>
+                      </div>
+                      <div class="category-row__meta">
+                        <span>{{ cat.percentage }}% of total</span>
+                        <span>${{ (cat.amount / budget.numberOfPeople) | number:'1.0-0' }} per person</span>
+                      </div>
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+
+            <!-- Per-Person Breakdown Table -->
+            <div class="card">
+              <h2>Per-Person Breakdown</h2>
+              <table class="budget-table">
+                <thead>
+                  <tr>
+                    <th>Category</th>
+                    <th>Total</th>
+                    <th>Per Person</th>
+                    <th>Per Day</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (cat of categories(); track cat.label) {
+                    <tr>
+                      <td>
+                        <span class="table-icon" [style.background]="cat.color + '20'" [style.color]="cat.color">
+                          <span class="material-icons">{{ cat.icon }}</span>
+                        </span>
+                        {{ cat.label }}
+                      </td>
+                      <td>${{ cat.amount | number:'1.0-0' }}</td>
+                      <td>${{ (cat.amount / budget.numberOfPeople) | number:'1.0-0' }}</td>
+                      <td>${{ (cat.amount / trip.durationDays) | number:'1.0-0' }}</td>
+                    </tr>
+                  }
+                  <tr class="total-row">
+                    <td><strong>Total</strong></td>
+                    <td><strong>${{ budget.totalUsd | number:'1.0-0' }}</strong></td>
+                    <td><strong>${{ (budget.totalUsd / budget.numberOfPeople) | number:'1.0-0' }}</strong></td>
+                    <td><strong>${{ (budget.totalUsd / trip.durationDays) | number:'1.0-0' }}</strong></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Savings Tips -->
+            <div class="card">
+              <h2><span class="material-icons">lightbulb</span> Money-Saving Tips</h2>
+              <div class="tips-list">
+                @for (cat of categories(); track cat.label) {
+                  <div class="tip-item">
+                    <span class="tip-item__icon" [style.background]="cat.color + '20'" [style.color]="cat.color">
+                      <span class="material-icons">{{ cat.icon }}</span>
+                    </span>
+                    <div>
+                      <strong>{{ cat.label }}</strong>
+                      <p>{{ getBudgetTip(cat.label) }}</p>
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+  }
+}

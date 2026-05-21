@@ -1,0 +1,198 @@
+<div class="planner-page">
+  <div class="page-header">
+    <div class="container">
+      <div class="page-header__inner">
+        <div>
+          <h1><span class="material-icons">map</span> Trip Planner</h1>
+          <p>Create and manage your family trip plans</p>
+        </div>
+        <button class="btn btn-primary" (click)="showForm.set(true)">
+          <span class="material-icons">add</span>
+          New Trip Plan
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="container planner-content">
+    @if (successMessage()) {
+      <div class="alert alert-success mb-4">
+        <span class="material-icons">check_circle</span>
+        {{ successMessage() }}
+      </div>
+    }
+    @if (errorMessage()) {
+      <div class="alert alert-error mb-4">
+        <span class="material-icons">error_outline</span>
+        {{ errorMessage() }}
+      </div>
+    }
+
+    @if (showForm()) {
+      <div class="trip-form-card card mb-8">
+        <div class="card-header">
+          <h2>Create New Trip Plan</h2>
+          <button class="btn btn-ghost btn-sm" (click)="showForm.set(false)">
+            <span class="material-icons">close</span>
+          </button>
+        </div>
+
+        <form [formGroup]="form" (ngSubmit)="saveTrip()">
+          <div class="form-group">
+            <label>Trip Title</label>
+            <input class="form-control" formControlName="title" placeholder="e.g. Summer Family Adventure in Barcelona">
+            @if (form.get('title')?.touched && form.get('title')?.hasError('required')) {
+              <span class="form-error">Title is required.</span>
+            }
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Family</label>
+              <select class="form-control" formControlName="familyId">
+                <option [value]="null">Select a family...</option>
+                @for (family of families(); track family.id) {
+                  <option [value]="family.id">{{ family.familyName }}</option>
+                }
+              </select>
+              @if (form.get('familyId')?.touched && form.get('familyId')?.invalid) {
+                <span class="form-error">Please select a family.</span>
+              }
+            </div>
+
+            <div class="form-group">
+              <label>Destination</label>
+              <select class="form-control" formControlName="destinationId">
+                <option [value]="null">Select a destination...</option>
+                @for (dest of destinations(); track dest.id) {
+                  <option [value]="dest.id">{{ dest.name }}, {{ dest.country }}</option>
+                }
+              </select>
+              @if (form.get('destinationId')?.touched && form.get('destinationId')?.invalid) {
+                <span class="form-error">Please select a destination.</span>
+              }
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Start Date</label>
+              <input class="form-control" type="date" formControlName="startDate">
+            </div>
+            <div class="form-group">
+              <label>End Date</label>
+              <input class="form-control" type="date" formControlName="endDate">
+            </div>
+          </div>
+
+          @if (getDurationDays() > 0) {
+            <div class="duration-info">
+              <span class="material-icons">schedule</span>
+              Trip duration: <strong>{{ getDurationDays() }} days</strong>
+            </div>
+          }
+
+          <div class="form-group">
+            <label>Estimated Budget (USD)</label>
+            <input class="form-control" type="number" min="1" step="50" formControlName="estimatedBudget" placeholder="e.g. 2500">
+            @if (form.get('estimatedBudget')?.touched && form.get('estimatedBudget')?.invalid) {
+              <span class="form-error">Budget must be greater than 0.</span>
+            }
+          </div>
+
+          <div class="form-group">
+            <label>Notes (optional)</label>
+            <textarea class="form-control" formControlName="notes" rows="3"
+              placeholder="Special requests, must-see places, dietary needs..."></textarea>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="btn btn-ghost" (click)="showForm.set(false)">Cancel</button>
+            <button type="submit" class="btn btn-primary" [disabled]="isSaving()">
+              @if (isSaving()) { <span class="spinner spinner--sm"></span> }
+              <span class="material-icons">flight_takeoff</span>
+              Create Trip Plan
+            </button>
+          </div>
+        </form>
+      </div>
+    }
+
+    @if (isLoading()) {
+      <div class="loading-overlay"><div class="spinner"></div></div>
+    } @else if (trips().length === 0) {
+      <div class="empty-state card">
+        <span class="material-icons">travel_explore</span>
+        <h3>No trips planned yet</h3>
+        <p>Start by creating your first family trip plan!</p>
+        <button class="btn btn-primary" (click)="showForm.set(true)">
+          <span class="material-icons">add</span>
+          Create First Trip
+        </button>
+      </div>
+    } @else {
+      <div class="trips-grid">
+        @for (trip of trips(); track trip.id) {
+          <div class="trip-card">
+            <div class="trip-card__image">
+              <img
+                [src]="trip.destinationImageUrl || 'https://images.unsplash.com/photo-1488085061387-422e29b40080?w=600&q=80'"
+                [alt]="trip.destinationName"
+              >
+              <div class="trip-card__status">
+                <span class="badge" [class]="getStatusClass(trip.status)">{{ trip.status }}</span>
+              </div>
+            </div>
+
+            <div class="trip-card__body">
+              <h3 class="trip-card__title">{{ trip.title }}</h3>
+
+              <div class="trip-card__info">
+                <div class="info-row">
+                  <span class="material-icons">location_on</span>
+                  {{ trip.destinationName }}, {{ trip.destinationCountry }}
+                </div>
+                <div class="info-row">
+                  <span class="material-icons">family_restroom</span>
+                  {{ trip.familyName }}
+                </div>
+                <div class="info-row">
+                  <span class="material-icons">calendar_today</span>
+                  {{ trip.startDate | dateFormat:'short' }} — {{ trip.endDate | dateFormat:'short' }}
+                </div>
+                <div class="info-row">
+                  <span class="material-icons">schedule</span>
+                  {{ trip.durationDays }} days
+                </div>
+                @if (trip.totalBudgetUsd) {
+                  <div class="info-row">
+                    <span class="material-icons">account_balance_wallet</span>
+                    Budget: <strong>${{ trip.totalBudgetUsd | number:'1.0-0' }}</strong>
+                  </div>
+                }
+              </div>
+
+              @if (trip.notes) {
+                <p class="trip-card__notes">{{ trip.notes }}</p>
+              }
+
+              <div class="trip-card__actions">
+                <button class="btn btn-primary btn-sm" (click)="generateItinerary(trip)">
+                  <span class="material-icons">view_timeline</span>
+                  Itinerary
+                </button>
+                <button class="btn btn-outline btn-sm" (click)="viewBudget(trip)">
+                  <span class="material-icons">pie_chart</span>
+                  Budget
+                </button>
+                <button class="btn btn-ghost btn-sm text-danger" (click)="deleteTrip(trip)" title="Delete trip">
+                  <span class="material-icons">delete_outline</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+    }
+  </div>
+</div>

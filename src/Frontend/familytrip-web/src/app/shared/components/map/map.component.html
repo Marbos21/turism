@@ -1,0 +1,25 @@
+<div class="map-container" [style.height]="height">
+  @if (safeMapUrl) {
+    <iframe
+      class="map-iframe"
+      [src]="safeMapUrl"
+      frameborder="0"
+      scrolling="no"
+      marginheight="0"
+      marginwidth="0"
+      [title]="'Map of ' + locationName"
+    ></iframe>
+    <div class="map-attribution">
+      <a
+        [href]="'https://www.openstreetmap.org/?mlat=' + latitude + '&mlon=' + longitude"
+        target="_blank"
+        rel="noopener"
+      >View larger map</a>
+    </div>
+  } @else {
+    <div class="map-placeholder">
+      <span class="material-icons">map</span>
+      <p>Map not available</p>
+    </div>
+  }
+</div>

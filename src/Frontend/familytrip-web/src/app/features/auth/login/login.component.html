@@ -1,0 +1,115 @@
+<div class="auth-layout">
+  <div class="auth-hero">
+    <div class="auth-hero__content">
+      <div class="auth-hero__logo">
+        <span class="auth-hero__logo-icon">✈</span>
+        <span class="auth-hero__logo-text">FamilyTrip Assistant</span>
+      </div>
+      <h1 class="auth-hero__title">Plan the perfect family adventure</h1>
+      <p class="auth-hero__subtitle">
+        Get AI-powered destination recommendations, personalized itineraries, and
+        smart budget planning tailored to your family's needs.
+      </p>
+      <div class="auth-hero__features">
+        <div class="auth-hero__feature">
+          <span class="material-icons">family_restroom</span>
+          <span>Family-centric planning</span>
+        </div>
+        <div class="auth-hero__feature">
+          <span class="material-icons">smart_toy</span>
+          <span>AI recommendations</span>
+        </div>
+        <div class="auth-hero__feature">
+          <span class="material-icons">account_balance_wallet</span>
+          <span>Budget management</span>
+        </div>
+        <div class="auth-hero__feature">
+          <span class="material-icons">explore</span>
+          <span>500+ destinations</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="auth-form-panel">
+    <div class="auth-form-card">
+      <div class="auth-form-card__header">
+        <h2>Welcome back</h2>
+        <p>Sign in to your account to continue planning</p>
+      </div>
+
+      @if (errorMessage) {
+        <div class="alert alert-error">
+          <span class="material-icons">error_outline</span>
+          {{ errorMessage }}
+        </div>
+      }
+
+      <form [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
+        <div class="form-group">
+          <label for="email">Email address</label>
+          <input
+            id="email"
+            type="email"
+            class="form-control"
+            [class.is-invalid]="email.invalid && email.touched"
+            formControlName="email"
+            placeholder="you@example.com"
+            autocomplete="email"
+          >
+          @if (email.touched && email.hasError('required')) {
+            <span class="form-error">Email is required.</span>
+          } @else if (email.touched && email.hasError('email')) {
+            <span class="form-error">Please enter a valid email address.</span>
+          }
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password</label>
+          <div class="input-wrapper">
+            <input
+              id="password"
+              [type]="showPassword ? 'text' : 'password'"
+              class="form-control"
+              [class.is-invalid]="password.invalid && password.touched"
+              formControlName="password"
+              placeholder="Enter your password"
+              autocomplete="current-password"
+            >
+            <button
+              type="button"
+              class="input-suffix-btn"
+              (click)="showPassword = !showPassword"
+              [title]="showPassword ? 'Hide password' : 'Show password'"
+            >
+              <span class="material-icons">{{ showPassword ? 'visibility_off' : 'visibility' }}</span>
+            </button>
+          </div>
+          @if (password.touched && password.hasError('required')) {
+            <span class="form-error">Password is required.</span>
+          }
+        </div>
+
+        <button
+          type="submit"
+          class="btn btn-primary btn-lg auth-submit-btn"
+          [disabled]="isLoading"
+        >
+          @if (isLoading) {
+            <span class="spinner spinner--sm"></span>
+            Signing in...
+          } @else {
+            <span class="material-icons">login</span>
+            Sign in
+          }
+        </button>
+      </form>
+
+      <div class="auth-form-card__footer">
+        <p>Don't have an account?
+          <a routerLink="/auth/register">Create one for free</a>
+        </p>
+      </div>
+    </div>
+  </div>
+</div>

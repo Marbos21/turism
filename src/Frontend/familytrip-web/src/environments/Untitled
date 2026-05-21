@@ -1,0 +1,21 @@
+accessToken
+: 
+"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJiNTE3ODU3Ni1jZjc4LTQ2YTItODQwZC01YTcyMGVkZTNiNGYiLCJlbWFpbCI6Im1hcml1cy5jdWN1QG1haWwuY29tIiwiZ2l2ZW5fbmFtZSI6Ik1hcml1cyIsImp0aSI6ImVjMDgxMjgzLTg0ZWUtNDQ1NC04MGEzLWEwOGFiYzI0ZmJiYSIsImV4cCI6MTc3NDAxOTU2MCwiaXNzIjoiRmFtaWx5VHJpcEFQSSIsImF1ZCI6IkZhbWlseVRyaXBDbGllbnQifQ.tVXLIURpfsIa9rXuQzv3yHss3h19Q8fifBBJv3lPRaw"
+expiresAt
+: 
+"2026-03-20T15:12:40.235065Z"
+refreshToken
+: 
+"CCjLNmo57EybEPZ6Chlr/tt6GTPBANriLR2RBgN9uAiumPuddm1dNO7cBqf6qyIwU65Cn0H0PEeev+5YRCC/hA=="
+userInfo
+: 
+{id: "b5178576-cf78-46a2-840d-5a720ede3b4f", email: "marius.cucu@mail.com", fullName: "Marius"}
+email
+: 
+"marius.cucu@mail.com"
+fullName
+: 
+"Marius"
+id
+: 
+"b5178576-cf78-46a2-840d-5a720ede3b4f"

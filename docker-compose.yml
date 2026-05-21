@@ -1,0 +1,43 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: src/Backend/FamilyTrip.API/Dockerfile
+    ports:
+      - "5200:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Data Source=/app/data/familytrip.db
+      - JwtSettings__Secret=FamilyTripAssistant-SuperSecretKey-2026-ChangeInProduction!
+      - JwtSettings__Issuer=FamilyTripAPI
+      - JwtSettings__Audience=FamilyTripClient
+      - JwtSettings__ExpiresInMinutes=60
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - OPENWEATHER_API_KEY=${OPENWEATHER_API_KEY:-}
+      - GOOGLE_MAPS_API_KEY=${GOOGLE_MAPS_API_KEY:-}
+      - DUFFEL_API_KEY=${DUFFEL_API_KEY:-}
+    volumes:
+      - api-data:/app/data
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./src/Frontend/familytrip-web
+      target: dev
+    ports:
+      - "4200:4200"
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
+      - MAPBOX_API_KEY=${MAPBOX_API_KEY:-}
+    volumes:
+      - ./src/Frontend/familytrip-web:/app
+      - /app/node_modules
+      - /app/.angular
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  api-data:

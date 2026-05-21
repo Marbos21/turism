@@ -1,0 +1,244 @@
+<div class="recommendations-page">
+  <div class="rec-hero">
+    <div class="container">
+      <div class="rec-hero__inner">
+        <div class="rec-hero__text">
+          <div class="rec-hero__badge">
+            <span class="material-icons">smart_toy</span>
+            AI-Powered
+          </div>
+          <h1>Personalized Recommendations</h1>
+          <p>Get AI-generated destination suggestions perfectly tailored to your family's preferences, budget, and travel style.</p>
+        </div>
+        <div class="rec-hero__controls">
+          @if (families().length) {
+            <div class="family-select">
+              <label>Recommendations for:</label>
+              <select class="form-control" [formControl]="familyControl" (change)="onFamilyChange()">
+                @for (family of families(); track family.id) {
+                  <option [value]="family.id">{{ family.familyName }}</option>
+                }
+              </select>
+            </div>
+          }
+          <button
+            class="btn btn-primary btn-lg"
+            (click)="generateRecommendations()"
+            [disabled]="isGenerating()"
+          >
+            @if (isGenerating()) {
+              <span class="spinner spinner--sm"></span>
+              Analyzing your family...
+            } @else {
+              <span class="material-icons">auto_awesome</span>
+              Generate New Recommendations
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="container rec-content">
+    @if (isLoading()) {
+      <div class="loading-state">
+        <div class="spinner spinner--lg"></div>
+        <p>Analyzing your family profile...</p>
+      </div>
+    } @else if (recommendations().length === 0) {
+      <div class="empty-state card">
+        <span class="material-icons">travel_explore</span>
+        <h3>No recommendations yet</h3>
+        <p>Click "Generate New Recommendations" to get personalized destination suggestions for your family.</p>
+        @if (!families().length) {
+          <p class="text-muted text-sm">First, <a routerLink="/family">create your family profile</a> to get personalized results.</p>
+        }
+      </div>
+    } @else {
+      <div class="rec-count">
+        <span class="material-icons">recommend</span>
+        <strong>{{ recommendations().length }}</strong> destinations recommended for your family
+        @if (agentMeta(); as meta) {
+          <span class="rec-source-badge" [class.rec-source-badge--ai]="meta.isAiPowered" [class.rec-source-badge--rule]="!meta.isAiPowered">
+            <span class="material-icons">{{ meta.isAiPowered ? 'smart_toy' : 'rule' }}</span>
+            {{ meta.isAiPowered ? 'AI-Powered' : 'Rule-Based' }}
+            @if (meta.isAiPowered && meta.model) { · <span>{{ meta.model }}</span> }
+          </span>
+        }
+      </div>
+
+      <!-- Agent trace panel -->
+      @if (agentMeta(); as meta) {
+        @if (meta.isAiPowered) {
+          <div class="agent-trace-panel">
+            <button class="agent-trace-panel__toggle" (click)="toggleTrace()">
+              <span class="material-icons">{{ showTracePanel() ? 'expand_less' : 'expand_more' }}</span>
+              <span class="material-icons">psychology</span>
+              <strong>How did we decide?</strong>
+              <span class="agent-trace-panel__summary">
+                {{ meta.turnsUsed }} turn(s) · {{ meta.toolCalls.length }} tool call(s) ·
+                {{ meta.totalInputTokens + meta.totalCachedTokens + meta.totalOutputTokens }} tokens
+                @if (meta.totalCachedTokens > 0) { ({{ meta.totalCachedTokens }} cached) }
+              </span>
+            </button>
+            @if (showTracePanel()) {
+              <ol class="agent-trace-panel__steps">
+                @for (call of meta.toolCalls; track $index) {
+                  <li class="agent-trace-step" [class.agent-trace-step--error]="call.isError">
+                    <span class="material-icons agent-trace-step__icon">{{ toolIcon(call.tool) }}</span>
+                    <div class="agent-trace-step__body">
+                      <div class="agent-trace-step__name">
+                        <code>{{ call.tool }}</code>
+                        <span class="agent-trace-step__duration">{{ call.durationMs }} ms</span>
+                      </div>
+                      <div class="agent-trace-step__output">{{ parseToolOutput(call.output) }}</div>
+                    </div>
+                  </li>
+                }
+              </ol>
+            }
+          </div>
+        }
+      }
+
+      <div class="recommendations-list">
+        @for (rec of recommendations(); track rec.id) {
+          <div class="rec-card">
+            <div class="rec-card__image">
+              <img [src]="rec.destinationImageUrl" [alt]="rec.destinationName" loading="lazy">
+              <div class="rec-card__score-badge" [style.background]="getScoreColor(rec.compatibilityScore)">
+                <span class="score-number">{{ rec.compatibilityScore }}</span>
+                <span class="score-label">match</span>
+              </div>
+            </div>
+
+            <div class="rec-card__content">
+              <div class="rec-card__header">
+                <div>
+                  <h2 class="rec-card__title">{{ rec.destinationName }}</h2>
+                  <p class="rec-card__country">
+                    <span class="material-icons">location_on</span>
+                    {{ rec.destinationCountry }}
+                  </p>
+                </div>
+                <div class="rec-card__header-right">
+                  <div class="compatibility-ring">
+                    <svg viewBox="0 0 80 80">
+                      <circle cx="40" cy="40" r="32" fill="none" stroke="#e0e0e0" stroke-width="8"/>
+                      <circle
+                        cx="40" cy="40" r="32"
+                        fill="none"
+                        [attr.stroke]="getScoreColor(rec.compatibilityScore)"
+                        stroke-width="8"
+                        stroke-linecap="round"
+                        [attr.stroke-dasharray]="201"
+                        [attr.stroke-dashoffset]="201 - (201 * rec.compatibilityScore / 100)"
+                        transform="rotate(-90 40 40)"
+                      />
+                      <text x="40" y="36" text-anchor="middle" font-size="16" font-weight="700" fill="#212121">{{ rec.compatibilityScore }}</text>
+                      <text x="40" y="50" text-anchor="middle" font-size="9" fill="#9e9e9e">/ 100</text>
+                    </svg>
+                    <span class="compatibility-label" [style.color]="getScoreColor(rec.compatibilityScore)">
+                      {{ getScoreLabel(rec.compatibilityScore) }}
+                    </span>
+                  </div>
+                  <button class="btn btn-ghost btn-sm dismiss-btn" (click)="dismissRecommendation(rec)" title="Dismiss">
+                    <span class="material-icons">close</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Reasoning -->
+              <div class="rec-reasoning">
+                <h3><span class="material-icons">psychology</span> Why we recommend this</h3>
+                <p>{{ rec.reasoning }}</p>
+              </div>
+
+              <!-- Live data chips (weather, attractions, hotels) -->
+              @if (hasAnyDataFor(rec)) {
+                @if (detailsFor(rec); as d) {
+                  <div class="live-data-chips">
+                    @if (d.weather) {
+                      <span class="live-chip live-chip--weather" title="Live weather from OpenWeatherMap">
+                        <span class="material-icons">wb_sunny</span>
+                        {{ d.weather.averageTempCelsius }}°C · {{ d.weather.summary }}
+                        @if (d.weather.rainyDays > 0) { · {{ d.weather.rainyDays }} rainy days }
+                      </span>
+                    }
+                    @if (d.attractions?.length) {
+                      <span class="live-chip live-chip--places" [title]="topAttractionNames(rec)">
+                        <span class="material-icons">place</span>
+                        {{ d.attractions.length }} attractions nearby
+                      </span>
+                    }
+                    @if (d.hotels && d.hotels.hotelsFound > 0) {
+                      <span class="live-chip live-chip--hotels" title="Hotel supply from Duffel">
+                        <span class="material-icons">hotel</span>
+                        {{ d.hotels.hotelsFound }} hotels
+                      </span>
+                    }
+                  </div>
+                }
+              }
+
+              <!-- Highlights -->
+              <div class="rec-highlights">
+                @for (highlight of rec.highlights; track highlight.category) {
+                  <div class="highlight-chip">
+                    <span class="material-icons">{{ highlight.icon }}</span>
+                    <div>
+                      <strong>{{ highlight.category }}</strong>
+                      <p>{{ highlight.description }}</p>
+                    </div>
+                  </div>
+                }
+              </div>
+
+              <!-- Meta info -->
+              <div class="rec-meta">
+                <div class="meta-item">
+                  <span class="material-icons">account_balance_wallet</span>
+                  <div>
+                    <span class="meta-label">Estimated Budget</span>
+                    <span class="meta-value">${{ rec.estimatedBudgetUsd | number:'1.0-0' }}</span>
+                  </div>
+                </div>
+                <div class="meta-item">
+                  <span class="material-icons">calendar_month</span>
+                  <div>
+                    <span class="meta-label">Best Months</span>
+                    <span class="meta-value">{{ getBestMonthNames(rec.bestTravelMonths) }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Warnings -->
+              @if (rec.warnings?.length) {
+                <div class="rec-warnings">
+                  @for (warning of rec.warnings; track warning) {
+                    <div class="warning-item">
+                      <span class="material-icons">warning</span>
+                      <span>{{ warning }}</span>
+                    </div>
+                  }
+                </div>
+              }
+
+              <!-- Actions -->
+              <div class="rec-actions">
+                <a [routerLink]="['/destinations', rec.destinationId]" class="btn btn-outline">
+                  <span class="material-icons">explore</span>
+                  View Destination
+                </a>
+                <a routerLink="/trip-planner" [queryParams]="{destinationId: rec.destinationId}" class="btn btn-primary">
+                  <span class="material-icons">flight_takeoff</span>
+                  Plan This Trip
+                </a>
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+    }
+  </div>
+</div>

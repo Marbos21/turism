@@ -1,0 +1,195 @@
+<div class="destinations-page">
+  <div class="destinations-hero">
+    <div class="container">
+      <h1>Explore Destinations</h1>
+      <p>Discover the perfect family-friendly destination from our curated collection worldwide</p>
+      <div class="destinations-search">
+        <span class="material-icons search-icon">search</span>
+        <input
+          class="search-input"
+          type="text"
+          placeholder="Search destinations, countries, or activities..."
+          [formControl]="searchControl"
+        >
+      </div>
+    </div>
+  </div>
+
+  <div class="container destinations-content">
+    <div class="destinations-layout">
+      <!-- Sidebar Filters -->
+      <aside class="filters-sidebar">
+        <div class="filters-card">
+          <div class="filters-header">
+            <h3><span class="material-icons">tune</span> Filters</h3>
+            <button class="btn btn-ghost btn-sm" (click)="clearFilters()">Clear all</button>
+          </div>
+
+          <div class="filter-section">
+            <label class="filter-label">Climate Type</label>
+            <select class="form-control" [value]="climateFilter()" (change)="climateFilter.set($any($event.target).value); applyFilters()">
+              <option value="">All climates</option>
+              @for (climate of climateOptions; track climate) {
+                <option [value]="climate">{{ climate }}</option>
+              }
+            </select>
+          </div>
+
+          <div class="filter-section">
+            <label class="filter-label">
+              Min. Child-Friendly Score: <strong>{{ minChildScore() }}/10</strong>
+            </label>
+            <input
+              type="range" min="0" max="10" step="1"
+              [value]="minChildScore()"
+              (input)="minChildScore.set(+$any($event.target).value)"
+              (change)="applyFilters()"
+              class="range-slider"
+            >
+            <div class="range-labels">
+              <span>0</span><span>5</span><span>10</span>
+            </div>
+          </div>
+
+          <div class="filter-section">
+            <label class="filter-label">
+              Max Budget per Day: <strong>{{ maxCost() ? '$' + maxCost() : 'Any' }}</strong>
+            </label>
+            <input
+              type="range" min="0" max="500" step="10"
+              [value]="maxCost()"
+              (input)="maxCost.set(+$any($event.target).value)"
+              (change)="applyFilters()"
+              class="range-slider"
+            >
+            <div class="range-labels">
+              <span>$0</span><span>$250</span><span>$500</span>
+            </div>
+          </div>
+
+          <div class="filter-section">
+            <label class="filter-label">Country</label>
+            <input
+              class="form-control"
+              type="text"
+              placeholder="Filter by country..."
+              [value]="selectedCountry()"
+              (input)="selectedCountry.set($any($event.target).value); applyFilters()"
+            >
+          </div>
+        </div>
+      </aside>
+
+      <!-- Destinations Grid -->
+      <main class="destinations-main">
+        <div class="results-info">
+          <span>{{ totalCount() }} destinations found</span>
+          @if (totalPages() > 1) {
+            <span>Page {{ currentPage() }} of {{ totalPages() }}</span>
+          }
+        </div>
+
+        @if (isLoading()) {
+          <div class="loading-overlay">
+            <div class="spinner"></div>
+          </div>
+        } @else if (destinations().length === 0) {
+          <div class="empty-state">
+            <span class="material-icons">search_off</span>
+            <h3>No destinations found</h3>
+            <p>Try adjusting your search or filters.</p>
+            <button class="btn btn-outline" (click)="clearFilters()">Clear filters</button>
+          </div>
+        } @else {
+          <div class="destinations-grid">
+            @for (dest of destinations(); track dest.id) {
+              <a [routerLink]="['/destinations', dest.id]" class="destination-card">
+                <div class="destination-card__image">
+                  <img [src]="dest.imageUrl" [alt]="dest.name" loading="lazy">
+                  <div class="destination-card__climate">
+                    <span class="badge" [class]="getClimateClass(dest.climate)">{{ dest.climate }}</span>
+                  </div>
+                  <div class="destination-card__overlay">
+                    <span class="material-icons">open_in_new</span>
+                  </div>
+                </div>
+                <div class="destination-card__body">
+                  <div class="destination-card__top">
+                    <div>
+                      <h3 class="destination-card__name">{{ dest.name }}</h3>
+                      <p class="destination-card__country">
+                        <span class="material-icons">location_on</span>
+                        {{ dest.country }}
+                      </p>
+                    </div>
+                    <div class="destination-card__cost">
+                      <span class="cost-value">${{ dest.averageCostPerDayUsd }}</span>
+                      <span class="cost-label">/day</span>
+                    </div>
+                  </div>
+
+                  <p class="destination-card__description">{{ dest.description }}</p>
+
+                  <!-- Child Score -->
+                  <div class="child-score">
+                    <span class="material-icons child-score__icon">child_friendly</span>
+                    <div class="child-score__bar-wrapper">
+                      <div
+                        class="child-score__bar"
+                        [style.width]="(dest.childFriendlyScore * 10) + '%'"
+                        [style.background]="getScoreColor(dest.childFriendlyScore)"
+                      ></div>
+                    </div>
+                    <span class="child-score__label" [style.color]="getScoreColor(dest.childFriendlyScore)">
+                      {{ dest.childFriendlyScore }}/10
+                    </span>
+                    <span class="child-score__text">{{ getScoreLabel(dest.childFriendlyScore) }}</span>
+                  </div>
+
+                  <!-- Tags -->
+                  @if (dest.tags?.length) {
+                    <div class="destination-card__tags">
+                      @for (tag of dest.tags.slice(0, 3); track tag) {
+                        <span class="badge badge-secondary">{{ tag }}</span>
+                      }
+                    </div>
+                  }
+                </div>
+              </a>
+            }
+          </div>
+
+          <!-- Pagination -->
+          @if (totalPages() > 1) {
+            <div class="pagination">
+              <button
+                class="btn btn-outline btn-sm"
+                [disabled]="currentPage() === 1"
+                (click)="goToPage(currentPage() - 1)"
+              >
+                <span class="material-icons">chevron_left</span>
+              </button>
+
+              @for (page of pageNumbers; track page) {
+                <button
+                  class="btn btn-sm"
+                  [class.btn-primary]="page === currentPage()"
+                  [class.btn-ghost]="page !== currentPage()"
+                  (click)="goToPage(page)"
+                >{{ page }}</button>
+              }
+
+              <button
+                class="btn btn-outline btn-sm"
+                [disabled]="currentPage() === totalPages()"
+                (click)="goToPage(currentPage() + 1)"
+              >
+                <span class="material-icons">chevron_right</span>
+              </button>
+            </div>
+          }
+        }
+      </main>
+    </div>
+  </div>
+</div>

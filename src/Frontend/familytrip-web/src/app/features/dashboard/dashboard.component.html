@@ -1,0 +1,136 @@
+<div class="dashboard">
+  <!-- Page Header -->
+  <div class="dashboard__hero">
+    <div class="dashboard__hero-content">
+      <h1 class="dashboard__greeting">{{ greeting }}, {{ userName }}!</h1>
+      <p class="dashboard__subtitle">Ready to plan your next family adventure? Here's your travel overview.</p>
+    </div>
+    <div class="dashboard__hero-actions">
+      <a routerLink="/trip-planner" class="btn btn-primary">
+        <span class="material-icons">add</span>
+        New Trip
+      </a>
+      <a routerLink="/recommendations" class="btn btn-outline">
+        <span class="material-icons">star</span>
+        Get Recommendations
+      </a>
+    </div>
+  </div>
+
+  <div class="dashboard__body container">
+    <!-- Quick Stats -->
+    <section class="dashboard__stats">
+      @for (stat of quickStats; track stat.label) {
+        <a [routerLink]="stat.route" class="stat-card">
+          <div class="stat-card__icon" [style.background]="stat.color + '20'" [style.color]="stat.color">
+            <span class="material-icons">{{ stat.icon }}</span>
+          </div>
+          <div class="stat-card__info">
+            <span class="stat-card__value">{{ stat.value }}</span>
+            <span class="stat-card__label">{{ stat.label }}</span>
+          </div>
+          <span class="material-icons stat-card__arrow">chevron_right</span>
+        </a>
+      }
+    </section>
+
+    <div class="dashboard__main-grid">
+      <!-- Upcoming Trips -->
+      <section class="dashboard__section">
+        <div class="section-header">
+          <h2 class="section-header__title">
+            <span class="material-icons">flight_takeoff</span>
+            Upcoming Trips
+          </h2>
+          <a routerLink="/trip-planner" class="btn btn-ghost btn-sm">View all</a>
+        </div>
+
+        @if (isLoading()) {
+          <div class="loading-overlay">
+            <div class="spinner"></div>
+          </div>
+        } @else if (upcomingTrips.length === 0) {
+          <div class="empty-state">
+            <span class="material-icons">flight_takeoff</span>
+            <h3>No upcoming trips</h3>
+            <p>Start planning your next family vacation!</p>
+            <a routerLink="/trip-planner" class="btn btn-primary btn-sm">
+              <span class="material-icons">add</span>
+              Plan a Trip
+            </a>
+          </div>
+        } @else {
+          <div class="trip-list">
+            @for (trip of upcomingTrips; track trip.id) {
+              <a [routerLink]="['/itinerary', trip.id]" class="trip-card">
+                <div class="trip-card__image">
+                  <img
+                    [src]="trip.destinationImageUrl || 'https://images.unsplash.com/photo-1488085061387-422e29b40080?w=300&q=80'"
+                    [alt]="trip.destinationName"
+                  >
+                </div>
+                <div class="trip-card__content">
+                  <div class="trip-card__top">
+                    <h3 class="trip-card__title">{{ trip.title }}</h3>
+                    <span class="badge" [class]="getTripStatusClass(trip.status)">{{ trip.status }}</span>
+                  </div>
+                  <p class="trip-card__destination">
+                    <span class="material-icons">location_on</span>
+                    {{ trip.destinationName }}, {{ trip.destinationCountry }}
+                  </p>
+                  <div class="trip-card__meta">
+                    <span>
+                      <span class="material-icons">calendar_today</span>
+                      {{ trip.startDate | dateFormat:'short' }} — {{ trip.endDate | dateFormat:'short' }}
+                    </span>
+                    <span>
+                      <span class="material-icons">schedule</span>
+                      {{ trip.durationDays }} days
+                    </span>
+                  </div>
+                  @if (trip.totalBudgetUsd) {
+                    <div class="trip-card__budget">
+                      <span class="material-icons">account_balance_wallet</span>
+                      Budget: ${{ trip.totalBudgetUsd | number:'1.0-0' }}
+                    </div>
+                  }
+                </div>
+              </a>
+            }
+          </div>
+        }
+      </section>
+
+      <!-- Right column -->
+      <div class="dashboard__right-col">
+        <!-- Quick Actions -->
+        <section class="dashboard__section">
+          <div class="section-header">
+            <h2 class="section-header__title">
+              <span class="material-icons">bolt</span>
+              Quick Actions
+            </h2>
+          </div>
+          <div class="quick-actions">
+            <a routerLink="/family" class="quick-action">
+              <span class="material-icons">family_restroom</span>
+              <span>Manage Family</span>
+            </a>
+            <a routerLink="/destinations" class="quick-action">
+              <span class="material-icons">explore</span>
+              <span>Browse Destinations</span>
+            </a>
+            <a routerLink="/recommendations" class="quick-action">
+              <span class="material-icons">smart_toy</span>
+              <span>AI Recommendations</span>
+            </a>
+            <a routerLink="/trip-planner" class="quick-action">
+              <span class="material-icons">map</span>
+              <span>Plan New Trip</span>
+            </a>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+</div>
