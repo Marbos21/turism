@@ -1,0 +1,9 @@
+# Source these before launching Claude Code so the ssh-mcp server in .mcp.json
+# can resolve ${SSH_HOST}/${SSH_USER}/${SSH_KEY_PATH} at startup.
+#
+# Quick path: copy to .envrc and `source .envrc` (or use direnv).
+
+export SSH_HOST="your.hetzner.ip.or.hostname"
+export SSH_PORT=22
+export SSH_USER="deploy"
+export SSH_KEY_PATH="$HOME/.ssh/id_ed25519"

@@ -1,0 +1,67 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: src/Backend/FamilyTrip.API/Dockerfile
+    expose:
+      - "8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Data Source=/app/data/familytrip.db
+      - JwtSettings__Secret=${JWT_SECRET:?JWT_SECRET is required}
+      - JwtSettings__Issuer=FamilyTripAPI
+      - JwtSettings__Audience=FamilyTripClient
+      - JwtSettings__ExpiresInMinutes=60
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - OPENWEATHER_API_KEY=${OPENWEATHER_API_KEY:-}
+      - GOOGLE_MAPS_API_KEY=${GOOGLE_MAPS_API_KEY:-}
+      - DUFFEL_API_KEY=${DUFFEL_API_KEY:-}
+    volumes:
+      - api-data:/app/data
+    restart: unless-stopped
+    networks:
+      - familytrip
+
+  web:
+    build:
+      context: ./src/Frontend/familytrip-web
+      target: prod
+      args:
+        MAPBOX_API_KEY: ${MAPBOX_API_KEY:-}
+    expose:
+      - "80"
+    restart: unless-stopped
+    networks:
+      - familytrip
+    depends_on:
+      - api
+
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    environment:
+      - DOMAIN=${DOMAIN:?DOMAIN is required, e.g. familytrip.example.com}
+      - ACME_EMAIL=${ACME_EMAIL:?ACME_EMAIL is required for Let's Encrypt}
+    restart: unless-stopped
+    networks:
+      - familytrip
+    depends_on:
+      - api
+      - web
+
+volumes:
+  api-data:
+  caddy-data:
+  caddy-config:
+
+networks:
+  familytrip:
+    driver: bridge

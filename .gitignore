@@ -37,3 +37,23 @@ TestResults/
 *.db
 *.sqlite
 *.sqlite3
+
+# AI assistants (per-user / local state - keep shared config like CLAUDE.md, .cursor/rules committed)
+.claude/
+.mcp.json
+CLAUDE.md
+CLAUDE.local.md
+.cursor/
+.cursorignore
+.aider*
+.continue/
+.windsurf/
+.windsurfrules
+.codeium/
+.copilot/
+.roo/
+.cline/
+.opencode/
+.gemini/
+GEMINI.md
+AGENTS.md
