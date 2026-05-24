@@ -101,6 +101,17 @@ export class RecommendationsComponent implements OnInit {
     return 'Top attractions: ' + d.attractions.slice(0, 3).map(a => a.name).join(', ');
   }
 
+  selectedTravelerCount(): number {
+    const family = this.families().find(f => f.id === this.selectedFamily());
+    return Math.max(1, family?.members?.length ?? 1);
+  }
+
+  familyEstimatedBudget(rec: Recommendation): number {
+    // rec.estimatedBudgetUsd is avgCostPerDay × 7 (per-traveller week).
+    // Scale to the whole family so the figure reflects what they'd actually spend.
+    return Math.round(rec.estimatedBudgetUsd * this.selectedTravelerCount());
+  }
+
   toggleTrace(): void {
     this.showTracePanel.update(v => !v);
   }

@@ -37,14 +37,16 @@ export class BudgetEstimatorComponent implements OnInit {
   pieSegments: PieSegment[] = [];
 
   ngOnInit(): void {
-    const id = Number(this.route.snapshot.paramMap.get('id'));
-    this.loadBudget(id);
+    const id = this.route.snapshot.paramMap.get('id');
+    if (id) this.loadBudget(id);
   }
 
-  private loadBudget(id: number): void {
+  private loadBudget(id: string): void {
     this.tripPlanService.getTripById(id).subscribe({
       next: (trip) => {
         this.trip.set(trip);
+        // The budget is computed client-side from the trip's stored itinerary,
+        // so it always reconciles with what's shown on the itinerary page.
         this.tripPlanService.getBudgetEstimate(id).subscribe({
           next: (b) => {
             this.budget.set(b);
@@ -52,33 +54,29 @@ export class BudgetEstimatorComponent implements OnInit {
             this.isLoading.set(false);
           },
           error: () => {
-            const mock = this.getMockBudget(trip);
-            this.budget.set(mock);
-            this.buildCategories(mock);
+            this.budget.set(null);
             this.isLoading.set(false);
           }
         });
       },
       error: () => {
-        const mockTrip = this.getMockTrip(id);
-        const mockBudget = this.getMockBudget(mockTrip);
-        this.trip.set(mockTrip);
-        this.budget.set(mockBudget);
-        this.buildCategories(mockBudget);
+        this.trip.set(null);
+        this.budget.set(null);
         this.isLoading.set(false);
       }
     });
   }
 
   private buildCategories(b: BudgetBreakdown): void {
-    const total = b.totalUsd;
+    const total = b.totalUsd || 1; // guard divide-by-zero
+    const pct = (amount: number) => Math.round((amount / total) * 100);
     const cats: BudgetCategory[] = [
-      { label: 'Accommodation', amount: b.accommodationUsd, percentage: Math.round(b.accommodationUsd / total * 100), icon: 'hotel',      color: '#2196f3' },
-      { label: 'Transport',     amount: b.transportUsd,     percentage: Math.round(b.transportUsd     / total * 100), icon: 'flight',     color: '#ff9800' },
-      { label: 'Food',          amount: b.foodUsd,          percentage: Math.round(b.foodUsd          / total * 100), icon: 'restaurant', color: '#4caf50' },
-      { label: 'Activities',    amount: b.activitiesUsd,    percentage: Math.round(b.activitiesUsd    / total * 100), icon: 'attractions',color: '#9c27b0' },
-      { label: 'Other',         amount: b.otherUsd,         percentage: Math.round(b.otherUsd         / total * 100), icon: 'more_horiz', color: '#607d8b' }
-    ];
+      { label: 'Accommodation', amount: b.accommodationUsd, percentage: pct(b.accommodationUsd), icon: 'hotel',      color: '#2196f3' },
+      { label: 'Transport',     amount: b.transportUsd,     percentage: pct(b.transportUsd),     icon: 'flight',     color: '#ff9800' },
+      { label: 'Food',          amount: b.foodUsd,          percentage: pct(b.foodUsd),          icon: 'restaurant', color: '#4caf50' },
+      { label: 'Activities',    amount: b.activitiesUsd,    percentage: pct(b.activitiesUsd),    icon: 'attractions',color: '#9c27b0' },
+      { label: 'Other',         amount: b.otherUsd,         percentage: pct(b.otherUsd),         icon: 'more_horiz', color: '#607d8b' }
+    ].filter(c => c.amount > 0);
     this.categories.set(cats);
     this.buildPieSegments(cats);
   }
@@ -117,29 +115,4 @@ export class BudgetEstimatorComponent implements OnInit {
     return tips[category] || '';
   }
 
-  private getMockBudget(trip: TripPlan): BudgetBreakdown {
-    const days = trip.durationDays || 7;
-    const people = 4;
-    return {
-      accommodationUsd: days * 120,
-      transportUsd:     people * 320,
-      foodUsd:          days * people * 40,
-      activitiesUsd:    days * people * 25,
-      otherUsd:         days * people * 15,
-      totalUsd:         days * 120 + people * 320 + days * people * 40 + days * people * 25 + days * people * 15,
-      numberOfPeople:   people,
-      perPersonUsd:     0
-    };
-  }
-
-  private getMockTrip(id: number): TripPlan {
-    return {
-      id, userId: 1, familyId: 1, familyName: 'The Smith Family',
-      destinationId: 1, destinationName: 'Barcelona', destinationCountry: 'Spain',
-      destinationImageUrl: '',
-      title: 'Summer in Barcelona', startDate: '2026-07-15', endDate: '2026-07-22',
-      durationDays: 7, status: 'Planned' as any, totalBudgetUsd: 2800,
-      createdAt: new Date().toISOString()
-    };
-  }
 }

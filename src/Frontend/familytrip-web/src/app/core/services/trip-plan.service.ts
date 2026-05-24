@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Observable, of } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { map, switchMap } from 'rxjs/operators';
 import { ApiService } from './api.service';
 import {
   TripPlan, CreateTripPlanRequest, ItineraryDay, BudgetBreakdown, TripStatus, ActivityType
@@ -36,8 +36,9 @@ interface BackendTripPlan {
   endDate: string;
   estimatedBudget: number;
   status: number;
+  numberOfTravelers: number;
   createdAt: string;
-  itineraryItems: unknown[];
+  itineraryItems: BackendItineraryItem[];
 }
 
 @Injectable({ providedIn: 'root' })
@@ -74,12 +75,15 @@ export class TripPlanService {
   }
 
   generateItinerary(tripId: number | string): Observable<ItineraryDay[]> {
-    return this.api.post<BackendItineraryItem[]>(`/trip-plans/${tripId}/itinerary/generate`, {}).pipe(
-      map(items => this.groupIntoDays(items ?? [], tripId))
+    // Refresh the trip first so we know how many travellers to size the day totals against.
+    return this.getTripById(tripId).pipe(
+      switchMap(trip => this.api.post<BackendItineraryItem[]>(`/trip-plans/${tripId}/itinerary/generate`, {}).pipe(
+        map(items => this.groupIntoDays(items ?? [], tripId, trip.numberOfTravelers ?? 1))
+      ))
     );
   }
 
-  private groupIntoDays(items: BackendItineraryItem[], tripPlanId: number | string): ItineraryDay[] {
+  private groupIntoDays(items: BackendItineraryItem[], tripPlanId: number | string, travelers: number = 1): ItineraryDay[] {
     const bySlot: Record<string, number> = { Morning: 0, Afternoon: 1, Evening: 2 };
     const byDay = new Map<number, BackendItineraryItem[]>();
     for (const it of items) {
@@ -87,11 +91,16 @@ export class TripPlanService {
       arr.push(it);
       byDay.set(it.dayNumber, arr);
     }
+    const t = Math.max(1, travelers);
     return Array.from(byDay.entries())
       .sort(([a], [b]) => a - b)
       .map(([dayNumber, list]) => {
         list.sort((a, b) => (bySlot[a.timeSlot] ?? 99) - (bySlot[b.timeSlot] ?? 99));
         const activities = list.map((it, idx) => this.toActivity(it, idx));
+        // Family-total per day: accommodation is per-room, everything else per-traveller.
+        const dayTotal = activities.reduce((sum, a) => {
+          return sum + (a.type === ActivityType.Accommodation ? a.costPerPersonUsd : a.costPerPersonUsd * t);
+        }, 0);
         return {
           id: dayNumber as unknown as number,
           tripPlanId: tripPlanId as unknown as number,
@@ -99,7 +108,7 @@ export class TripPlanService {
           date: new Date().toISOString(),
           title: dayNumber === 1 ? 'Arrival Day' : `Day ${dayNumber} Exploration`,
           activities,
-          totalCostUsd: activities.reduce((s, a) => s + a.costPerPersonUsd, 0)
+          totalCostUsd: Math.round(dayTotal * 100) / 100
         };
       });
   }
@@ -146,12 +155,50 @@ export class TripPlanService {
     return ActivityType.Attraction;
   }
 
-  getBudgetEstimate(_tripId: number | string): Observable<BudgetBreakdown> {
-    return of({
-      accommodationUsd: 0, transportUsd: 0, foodUsd: 0,
-      activitiesUsd: 0, otherUsd: 0, totalUsd: 0,
-      numberOfPeople: 0, perPersonUsd: 0
-    });
+  getBudgetEstimate(tripId: number | string): Observable<BudgetBreakdown> {
+    return this.getTripById(tripId).pipe(map(trip => this.computeBudget(trip)));
+  }
+
+  private computeBudget(trip: TripPlan): BudgetBreakdown {
+    const items = (trip.itinerary ?? []).flatMap(d => d.activities);
+    const travelers = Math.max(1, trip.numberOfTravelers ?? 1);
+
+    // Per-traveller cost categories (each item's costPerPersonUsd is stored that way).
+    let transportPP = 0, foodPP = 0, activitiesPP = 0, otherPP = 0;
+    // Accommodation is per-room/per-night and shared across the family.
+    let accommodation = 0;
+
+    for (const a of items) {
+      const cost = Number(a.costPerPersonUsd) || 0;
+      switch (a.type) {
+        case ActivityType.Accommodation: accommodation += cost; break;
+        case ActivityType.Transport:     transportPP   += cost; break;
+        case ActivityType.Meal:          foodPP        += cost; break;
+        case ActivityType.Attraction:
+        case ActivityType.Recreation:    activitiesPP  += cost; break;
+        case ActivityType.Shopping:
+        case ActivityType.Free:          otherPP       += cost; break;
+        default:                         otherPP       += cost; break;
+      }
+    }
+
+    const transport  = transportPP  * travelers;
+    const food       = foodPP       * travelers;
+    const activities = activitiesPP * travelers;
+    const other      = otherPP      * travelers;
+    const total      = accommodation + transport + food + activities + other;
+
+    const round = (n: number) => Math.round(n * 100) / 100;
+    return {
+      accommodationUsd: round(accommodation),
+      transportUsd:     round(transport),
+      foodUsd:          round(food),
+      activitiesUsd:    round(activities),
+      otherUsd:         round(other),
+      totalUsd:         round(total),
+      numberOfPeople:   travelers,
+      perPersonUsd:     round(total / travelers)
+    };
   }
 
   private toFeTripPlan(be: BackendTripPlan): TripPlan {
@@ -160,6 +207,10 @@ export class TripPlanService {
     const end = new Date(be.endDate);
     const ms = end.getTime() - start.getTime();
     const durationDays = Number.isFinite(ms) ? Math.max(1, Math.round(ms / (1000 * 60 * 60 * 24))) : 0;
+    const travelers = Math.max(1, Number(be.numberOfTravelers ?? 1));
+    const itinerary = (be.itineraryItems?.length ?? 0) > 0
+      ? this.groupIntoDays(be.itineraryItems!, be.id, travelers)
+      : undefined;
     return {
       id: be.id as unknown as number,
       userId: 0 as unknown as number,
@@ -175,6 +226,8 @@ export class TripPlanService {
       durationDays,
       status: this.statusIntToEnum(be.status),
       totalBudgetUsd: Number(be.estimatedBudget ?? 0),
+      numberOfTravelers: Math.max(1, Number(be.numberOfTravelers ?? 1)),
+      itinerary,
       createdAt: be.createdAt
     };
   }

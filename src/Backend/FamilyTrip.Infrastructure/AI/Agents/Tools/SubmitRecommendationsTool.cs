@@ -7,7 +7,9 @@ public sealed class SubmitRecommendationsTool : IAgentTool
 {
     public string Name => "submit_recommendations";
     public string Description =>
-        "TERMINAL TOOL. Call this exactly once when you have enough information. Submits the final ranked list of destinations for this family.";
+        "TERMINAL TOOL. Call this exactly once when you have enough information. " +
+        "The `rankings` field is REQUIRED and MUST contain the full scored list - " +
+        "never call this tool with an empty input object.";
 
     public JsonElement InputSchema { get; } = JsonDocument.Parse("""
         {

@@ -199,8 +199,8 @@
                 <div class="meta-item">
                   <span class="material-icons">account_balance_wallet</span>
                   <div>
-                    <span class="meta-label">Estimated Budget</span>
-                    <span class="meta-value">${{ rec.estimatedBudgetUsd | number:'1.0-0' }}</span>
+                    <span class="meta-label">Estimated Budget · family of {{ selectedTravelerCount() }}</span>
+                    <span class="meta-value">${{ familyEstimatedBudget(rec) | number:'1.0-0' }}</span>
                   </div>
                 </div>
                 <div class="meta-item">

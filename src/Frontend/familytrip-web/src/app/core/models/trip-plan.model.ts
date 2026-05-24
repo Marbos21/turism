@@ -14,6 +14,7 @@ export interface TripPlan {
   status: TripStatus;
   totalBudgetUsd: number;
   actualSpendUsd?: number;
+  numberOfTravelers?: number;
   notes?: string;
   itinerary?: ItineraryDay[];
   budgetBreakdown?: BudgetBreakdown;

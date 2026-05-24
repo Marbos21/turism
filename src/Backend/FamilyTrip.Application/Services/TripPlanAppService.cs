@@ -26,18 +26,26 @@ public class TripPlanAppService : ITripPlanAppService
         _supplements = supplements;
     }
 
+    private async Task<int> GetTravelerCountAsync(Guid familyId, CancellationToken cancellationToken)
+    {
+        var members = await _unitOfWork.FamilyMembers.FindAsync(m => m.FamilyId == familyId, cancellationToken);
+        return Math.Max(1, members.Count());
+    }
+
     public async Task<List<TripPlanDto>> GetByFamilyAsync(Guid familyId, Guid userId, CancellationToken cancellationToken = default)
     {
         var family = await _unitOfWork.Families.GetByIdAsync(familyId, cancellationToken);
         if (family is null || family.UserId != userId)
             throw new KeyNotFoundException("Family not found.");
 
+        var travelers = await GetTravelerCountAsync(familyId, cancellationToken);
         var plans = await _unitOfWork.TripPlans.FindAsync(tp => tp.FamilyId == familyId, cancellationToken);
         var result = new List<TripPlanDto>();
 
         foreach (var plan in plans)
         {
             var dto = _mapper.Map<TripPlanDto>(plan);
+            dto.NumberOfTravelers = travelers;
             var destination = await _unitOfWork.Destinations.GetByIdAsync(plan.DestinationId, cancellationToken);
             if (destination is not null)
                 dto.Destination = _mapper.Map<DestinationDto>(destination);
@@ -78,6 +86,7 @@ public class TripPlanAppService : ITripPlanAppService
 
         var dto = _mapper.Map<TripPlanDto>(plan);
         dto.Destination = _mapper.Map<DestinationDto>(destination);
+        dto.NumberOfTravelers = await GetTravelerCountAsync(request.FamilyId, cancellationToken);
         dto.ItineraryItems = new List<ItineraryItemDto>();
         return dto;
     }
@@ -96,6 +105,7 @@ public class TripPlanAppService : ITripPlanAppService
         var destination = await _unitOfWork.Destinations.GetByIdAsync(plan.DestinationId, cancellationToken);
         if (destination is not null)
             dto.Destination = _mapper.Map<DestinationDto>(destination);
+        dto.NumberOfTravelers = await GetTravelerCountAsync(plan.FamilyId, cancellationToken);
 
         var items = await _unitOfWork.ItineraryItems.FindAsync(i => i.TripPlanId == plan.Id, cancellationToken);
         dto.ItineraryItems = _mapper.Map<List<ItineraryItemDto>>(items.OrderBy(i => i.DayNumber).ThenBy(i => i.TimeSlot).ToList());
@@ -125,6 +135,7 @@ public class TripPlanAppService : ITripPlanAppService
         var destination = await _unitOfWork.Destinations.GetByIdAsync(plan.DestinationId, cancellationToken);
         if (destination is not null)
             dto.Destination = _mapper.Map<DestinationDto>(destination);
+        dto.NumberOfTravelers = await GetTravelerCountAsync(plan.FamilyId, cancellationToken);
 
         var items = await _unitOfWork.ItineraryItems.FindAsync(i => i.TripPlanId == plan.Id, cancellationToken);
         dto.ItineraryItems = _mapper.Map<List<ItineraryItemDto>>(items.OrderBy(i => i.DayNumber).ThenBy(i => i.TimeSlot).ToList());
@@ -172,15 +183,16 @@ public class TripPlanAppService : ITripPlanAppService
 
         // Generate activities + travel/accommodation in parallel
         var membersList = members.ToList();
-        var adults = Math.Max(1, membersList.Count(m => DateTime.UtcNow.Year - m.BirthDate.Year >= 18));
-        if (membersList.Count == 0) adults = 2; // sensible default
+        // Treat every family member as a traveller (kids fly + eat too). For an
+        // empty family default to 2 so the math doesn't collapse.
+        var travelers = Math.Max(1, membersList.Count == 0 ? 2 : membersList.Count);
 
         var itineraryTask = _itineraryOptimizer.GenerateItineraryAsync(plan, destination, family, membersList, cancellationToken);
         var supplementsTask = _supplements.ResolveAsync(
             plan.StartDate, plan.EndDate,
             destination.Latitude, destination.Longitude,
             destination.Name, destination.Country,
-            adults, cancellationToken);
+            travelers, cancellationToken);
 
         await Task.WhenAll(itineraryTask, supplementsTask);
         var generatedItems = itineraryTask.Result;
@@ -188,7 +200,9 @@ public class TripPlanAppService : ITripPlanAppService
 
         var totalDays = Math.Max(1, (int)(plan.EndDate - plan.StartDate).TotalDays);
 
-        // Outbound flight on day 1 morning, before activities
+        // Outbound flight on day 1 morning, before activities. We quoted Duffel
+        // for `travelers` passengers, so dividing the total by travelers gives
+        // a per-traveller figure consistent with the activity costs.
         if (supplements.Outbound is { } outbound)
         {
             generatedItems.Insert(0, new ItineraryItem
@@ -199,15 +213,25 @@ public class TripPlanAppService : ITripPlanAppService
                 ActivityName = $"Flight {outbound.OriginIata} → {outbound.DestinationIata}",
                 Location = $"{outbound.OriginIata} airport",
                 Duration = Math.Max(60, (int)(outbound.ArrivalAt - outbound.DepartureAt).TotalMinutes),
-                EstimatedCost = adults > 0 ? Math.Round(outbound.TotalAmount / adults, 2) : outbound.TotalAmount,
-                Notes = $"{outbound.Airline} · departs {outbound.DepartureAt:HH:mm} · {outbound.Currency} {outbound.TotalAmount:0} total for {adults} adult(s)"
+                EstimatedCost = Math.Round(outbound.TotalAmount / travelers, 2),
+                Notes = $"{outbound.Airline} · departs {outbound.DepartureAt:HH:mm} · {outbound.Currency} {outbound.TotalAmount:0} total for {travelers} traveller(s)"
             });
         }
 
-        // Nightly accommodation on each day (except the last full day since checkout)
-        if (supplements.Hotels is { CheapestNightlyAmount: { } nightly, CheapestHotelName: { } hotelName })
+        // Nightly accommodation row on each day. Prefer the real Duffel rate;
+        // fall back to a heuristic (40% of the destination's daily cost estimate)
+        // so the user still sees a representative lodging line even when the
+        // sandbox returns no priced offers.
+        var realNightly = supplements.Hotels?.CheapestNightlyAmount;
+        var hotelName = supplements.Hotels?.CheapestHotelName
+                        ?? $"Hotel in {destination.Name} (estimated)";
+        var nightlyAmount = realNightly ?? Math.Round(destination.AvgCostPerDay * 0.40m, 2);
+        var nightlyNotes = realNightly is not null
+            ? $"Cheapest available rate via Duffel{(string.IsNullOrWhiteSpace(supplements.Hotels?.Currency) ? "" : $" ({supplements.Hotels.Currency})")}"
+            : "Estimated nightly rate based on destination cost tier";
+
+        if (nightlyAmount > 0)
         {
-            var stayLabel = string.IsNullOrWhiteSpace(supplements.Hotels.Currency) ? "" : $" ({supplements.Hotels.Currency})";
             for (var day = 1; day <= totalDays; day++)
             {
                 generatedItems.Add(new ItineraryItem
@@ -218,8 +242,8 @@ public class TripPlanAppService : ITripPlanAppService
                     ActivityName = $"Stay at {hotelName}",
                     Location = hotelName,
                     Duration = 600,
-                    EstimatedCost = Math.Round(nightly, 2),
-                    Notes = $"Cheapest available rate via Duffel{stayLabel}"
+                    EstimatedCost = nightlyAmount,
+                    Notes = nightlyNotes
                 });
             }
         }
@@ -235,8 +259,8 @@ public class TripPlanAppService : ITripPlanAppService
                 ActivityName = $"Flight {ret.OriginIata} → {ret.DestinationIata}",
                 Location = $"{ret.OriginIata} airport",
                 Duration = Math.Max(60, (int)(ret.ArrivalAt - ret.DepartureAt).TotalMinutes),
-                EstimatedCost = adults > 0 ? Math.Round(ret.TotalAmount / adults, 2) : ret.TotalAmount,
-                Notes = $"{ret.Airline} · departs {ret.DepartureAt:HH:mm} · {ret.Currency} {ret.TotalAmount:0} total for {adults} adult(s)"
+                EstimatedCost = Math.Round(ret.TotalAmount / travelers, 2),
+                Notes = $"{ret.Airline} · departs {ret.DepartureAt:HH:mm} · {ret.Currency} {ret.TotalAmount:0} total for {travelers} traveller(s)"
             });
         }
 

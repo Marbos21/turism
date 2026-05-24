@@ -23,6 +23,9 @@ internal static class RecommendationAgentPrompt
           - get_hotel_availability(destinationId): only if the family is Luxury tier OR
             has specific accommodation needs. Skip otherwise.
           - submit_recommendations(rankings): TERMINAL. Call exactly once at the end.
+            ALWAYS include the `rankings` array as the tool input - the array is
+            mandatory and contains every candidate you were given (with scores and
+            reasoning). Never call this tool with an empty object.
 
         TOOL BUDGET: Use at most 5 tools total before submitting. Don't query data you
         don't need. If a tool returns {available: false}, work without it - do not retry.

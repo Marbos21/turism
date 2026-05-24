@@ -15,5 +15,12 @@ public class TripPlanDto
     public decimal EstimatedBudget { get; set; }
     public TripStatus Status { get; set; }
     public DateTime CreatedAt { get; set; }
+
+    /// <summary>
+    /// Total number of travellers (family members) on this trip. Populated
+    /// per-request from the related Family; not stored on the entity.
+    /// </summary>
+    public int NumberOfTravelers { get; set; }
+
     public List<ItineraryItemDto> ItineraryItems { get; set; } = new();
 }
